@@ -1,0 +1,135 @@
+---
+title: 'Homework #1'
+author: "Hunter Ratliff"
+date: "10/30/2019"
+output:
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  word_document: 
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+```
+
+# Section I
+
+> 1. Please indicate (by entering ‘x’ in the cell) the appropriate type for each variable in the following table.
+
+*Insert the table here*
+<br>
+
+<br>
+
+<br>
+
+
+
+# Section II
+
+> 2. Compute following descriptive statistics for variable Dur_stay (Duration of Hospital Stay) (HOSPITAL.DAT.dta, table 2.13 on p. 36).
+
+First, we'll read in the data and create a vector $x$ of the duration of hospital stay
+
+```{r read_hospital, echo=T}
+library(tidyverse)
+
+# Read in dataset
+hospital <- readxl::read_excel("~/Github/MPH_Biostats/Textbook datasets/HOSPITAL.DAT.xls")
+x <- hospital$Dur_stay # save as vector
+```
+
+Now we'll calculate the requested values. To make grading easier, the concise results can be found below. The remainder of section two will illustrate how these values were calculated.
+
+1. Mean: **`r mean(x)`**
+2. Median: **`r median(x)`**
+3. Mode: Bimodal at **5** and **11** (both have n=4)
+4. Geometric mean: **7.3**
+5. Variance & Std Dev: **32.67** and **5.72** (respectively)
+6. Range: minimum=**`r min(x)`**, maximum=**`r max(x)`**
+7. 10th quantile: **3**
+8. IQR: ${Q}_{25}$=**5**, ${Q}_{75}$=**11**
+
+## Mean & Median
+
+Calculating mean and median are easy with their respective base functions
+
+```{r, echo=T, collapse=T}
+mean(x)
+median(x)
+```
+
+## Mode
+
+R doesn't have a base function to find the mode, but we can figure it out by counting. Turns out that two of our values, **5** and **11**, both show up four times.
+
+```{r, echo=T, collapse=T}
+# Find mode
+dplyr::count(hospital, Dur_stay, sort = T)
+
+# # Histogram (not run)
+# qplot(x=Dur_stay, data=hospital, binwidth=1)
+```
+
+## Geometric mean
+
+The geometric mean also isn't a base function, but can be calculated by hand 
+
+```{r, echo=T, tidy=T}
+# Geometric mean
+log_ans <- sum(log(x)) / length(x)
+exp(log_ans) 
+```
+
+## Variance & standard deviation
+
+Simply the functions from the stats package
+
+```{r, echo=T}
+var(x)
+sd(x)  # equals sqrt(var(x))
+
+# Gives the same variance if calculated by hand
+sum( (mean(x) - x)^2 ) / (length(x) - 1)
+```
+
+
+## Range
+
+We can use the `range(x)` function or better yet the `summary(x)` function
+
+```{r}
+range(x)
+summary(x)
+# min(x)
+# max(x)
+```
+
+## 10th quantile, IQR
+
+We can use `quantile(x)` to find the specified quantiles. Note there are multiple quantile algorithms, and I picked the one that SAS uses (according to the R documentation)
+
+```{r, echo=T}
+quantile(x, probs = c(0.1, 0.25, 0.75),
+         type=3) # use type 3, since that's the definition in SAS
+```
+
+
+# Section III
+
+> 3. You will use SAS to compute the statistics and graphics needed to describe pulmonary function data in the FEV.dta dataset. Pulmonary Function (Based on Rosner 8 th edition 2.23-2.25)     
+
+> Forced expiratory volume (FEV) is an index of pulmonary function that measures the volume of air expelled after 1 second of constant effort.
+
+> The dataset FEV.DAT.dta contains determinations of FEV on 654 children ages 3 through 19 who were seen in the Childhood Respiratory Disease (CRD) study. The study was conducted in East Boston Massachusetts in 1980. Table 2.17 displays the layout of the dataset (p. 38).
+
+```{r}
+# Read in dataset
+fev <- readxl::read_excel("~/Github/MPH_Biostats/Textbook datasets/FEV.DAT.xls")
+```
+

@@ -1,0 +1,15 @@
+.httr-oauth
+.RData
+.Rhistory
+.Rproj.user
+.Renviron
+.DS_Store
+Textbook datasets
+*.Rproj
+
+# HTML, png, pdf
+*.html
+*.png
+*.pdf
+
+.CensusAPIkey.R
