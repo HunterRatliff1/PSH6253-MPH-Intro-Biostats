@@ -11,5 +11,7 @@ Textbook datasets
 *.html
 *.png
 *.pdf
+*.docx
+*.doc
 
 .CensusAPIkey.R
