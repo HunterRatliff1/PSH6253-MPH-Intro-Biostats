@@ -15,13 +15,27 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(tidyverse)
+library(ggthemes)
+library(gridExtra)
 ```
+
+
+***
+
+The datasets and .Rmd file used to compile these results can be found at [this repository](https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/tree/master/Homework/HW1).
 
 # Section I
 
 > 1. Please indicate (by entering ‘x’ in the cell) the appropriate type for each variable in the following table.
 
-*Insert the table here*
+***
+
+My answers can be found on the table below. Note that for the *CD4 count response*, I'm assuming that you can't have a fraction of a cell, and at UTMB I've always seen CD4 counts reported as integers. However, if you had something like `40 cells/dL` then you would technically have `2.5 cells/mL`, but I'm still considering the number of cells to be discrete.
+
+
+![Answers to question 1](HW1_q1.png)
 <br>
 
 <br>
@@ -34,6 +48,8 @@ knitr::opts_chunk$set(echo=F, warning=F, message=F)
 
 > 2. Compute following descriptive statistics for variable Dur_stay (Duration of Hospital Stay) (HOSPITAL.DAT.dta, table 2.13 on p. 36).
 
+***
+
 First, we'll read in the data and create a vector $x$ of the duration of hospital stay
 
 ```{r read_hospital, echo=T}
@@ -44,7 +60,7 @@ hospital <- readxl::read_excel("~/Github/MPH_Biostats/Textbook datasets/HOSPITAL
 x <- hospital$Dur_stay # save as vector
 ```
 
-Now we'll calculate the requested values. To make grading easier, the concise results can be found below. The remainder of section two will illustrate how these values were calculated.
+Now we'll calculate the requested values. To make grading easier, the concise results can be found below. The remainder of section II will illustrate how these values were calculated.
 
 1. Mean: **`r mean(x)`**
 2. Median: **`r median(x)`**
@@ -66,7 +82,7 @@ median(x)
 
 ## Mode
 
-R doesn't have a base function to find the mode, but we can figure it out by counting. Turns out that two of our values, **5** and **11**, both show up four times.
+R doesn't have a base function to find the mode, but we can figure it out by counting by `Dur_stay`. Turns out that two of our values, **5** and **11**, both show up four times.
 
 ```{r, echo=T, collapse=T}
 # Find mode
@@ -78,12 +94,12 @@ dplyr::count(hospital, Dur_stay, sort = T)
 
 ## Geometric mean
 
-The geometric mean also isn't a base function, but can be calculated by hand 
+The geometric mean also isn't a base function, but can be calculated by hand with:
 
 ```{r, echo=T, tidy=T}
 # Geometric mean
 log_ans <- sum(log(x)) / length(x)
-exp(log_ans) 
+exp(log_ans)
 ```
 
 ## Variance & standard deviation
@@ -128,8 +144,188 @@ quantile(x, probs = c(0.1, 0.25, 0.75),
 
 > The dataset FEV.DAT.dta contains determinations of FEV on 654 children ages 3 through 19 who were seen in the Childhood Respiratory Disease (CRD) study. The study was conducted in East Boston Massachusetts in 1980. Table 2.17 displays the layout of the dataset (p. 38).
 
-```{r}
+***
+
+```{r read_fev}
 # Read in dataset
-fev <- readxl::read_excel("~/Github/MPH_Biostats/Textbook datasets/FEV.DAT.xls")
+fev <- readxl::read_excel("~/Github/MPH_Biostats/Textbook datasets/FEV.DAT.xls") %>%
+  # Recode categorical variables
+  mutate(
+    Sex   = recode(Sex, "0"="Female", "1"="Male"),
+    Smoke = recode(Smoke, "0"="noncurrent smoker",
+                          "1"="current smoker")
+  ) %>%
+  mutate(
+    Sex   = as.factor(Sex),
+    Smoke = as.factor(Smoke)
+  )
 ```
+
+## Create histograms & boxplots 
+
+> 1). Create histograms and box plots for Age, FEV, and Height.
+
+```{r plot_Age, fig.width=3}
+bp_age <- fev %>%
+  ggplot(aes(x="", y=Age)) +
+  geom_boxplot(alpha=0.75, fill="#FF420E") + 
+  geom_jitter(alpha=0.05) +
+  theme_bw() +
+  labs(x="", y="Age (years)",
+       title = "Boxplot of age",
+       caption = "")
+
+# ggExtra::ggMarginal(p_age, margins="y", type="histogram")
+
+h_age <- fev %>%
+  ggplot(aes(x=Age)) +
+  geom_histogram(fill="#FF420E", color="black", binwidth = 1) +
+  theme_bw() +
+  labs(x="Age (years)",
+       title = "Histogram of age")
+
+# fev %>%
+#   gather("Variable", "Value", Age:Hgt) %>%
+#   ggplot(aes(x=Variable, y=Value, fill=Variable)) + 
+#   geom_boxplot() +
+#   facet_wrap("Variable", scales = "free") 
+```
+
+```{r plot_FEV, fig.width=3}
+bp_FEV <- fev %>%
+  ggplot(aes(x="", y=FEV)) +
+  # geom_violin() +
+  geom_boxplot(alpha=0.75, fill="#579d1c") +
+  geom_jitter(alpha=0.05) +
+  theme_bw() +
+  labs(x="", y="FEV (liters)",
+       title = "Boxplot of FEV",
+       caption = "")
+
+# ggExtra::ggMarginal(p_FEV, margins="y", type="histogram")
+
+h_FEV <- fev %>%
+  ggplot(aes(x=FEV)) +
+  geom_histogram(fill="#579d1c", color="black") +
+  theme_bw() +
+  labs(x="FEV (liters)",
+       title = "Histogram of FEV")
+```
+
+```{r plot_Height, fig.width=3}
+bp_Hgt <- fev %>%
+  ggplot(aes(x="", y=Hgt)) +
+  # geom_violin() +
+  geom_boxplot(alpha=0.75, fill="#0084d1") +
+  geom_jitter(alpha=0.05) +
+  theme_bw() +
+  labs(x="", y="Height (inches)",
+       title = "Boxplot of height")
+
+# ggExtra::ggMarginal(p_Hgt, margins="y", type="histogram")
+
+h_hgt <- fev %>%
+  ggplot(aes(x=Hgt)) +
+  geom_histogram(fill="#0084d1", color="black") +
+  theme_bw() +
+  labs(x="Height (inches)",
+       title = "Histogram of height")
+```
+
+```{r plot_all_three, fig.height=9}
+grid.arrange(ncol=2,
+  ggExtra::ggMarginal(bp_age, margins="y", type="histogram"),
+  ggExtra::ggMarginal(bp_FEV, margins="y", type="histogram"),
+  ggExtra::ggMarginal(bp_Hgt, margins="y", type="histogram"),
+  h_age, h_FEV, h_hgt 
+)
+```
+
+
+
+## Descriptive stats of quantitative variables
+
+> 2). For each quantitative measure compute a table with n, mean, standard deviation, median, Q 25 , Q 75, the minimum and maximum values.
+
+```{r}
+fev %>%
+  gather("Variable", "Value", Age:Hgt) %>%
+  group_by(Variable) %>%
+  summarise(
+    n = n(),
+    mean = mean(Value), 
+    sd = sd(Value),
+    median = median(Value),
+    q25 = quantile(Value, probs=0.25),
+    q75 = quantile(Value, probs=0.75),
+    min = min(Value),
+    max = max(Value)
+  ) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  pander::pander(caption="Descriptive statistics of quantitative variables")
+```
+
+## Discussion of best measure of location and dispersion
+
+> 3). Looking at the descriptive statistics and the graphs you produced for problems 1) and 2). Discuss which measure of location and dispersion is the best one to use to describe the distribution of Age, FEV, and Height, and Why.
+
+**Age** and **height** look like there are few outliers, so it seems most appropriate to describe them using _mean_, _standard deviation_, and _range_. Additionally, the mean and median values for both these variables are nearly identical, as expected given their lack of skew.
+
+This can't be said for **FEV**, which has a positive skew as evidenced by the outliers on the boxplot and the shape of the histogram. Therefore, I'd use _median_, _IQR_, and _range_ to describe this variable.
+
+
+## Frequencies of categorical variables
+
+> 4). For smoking status and gender, calculate the frequencies and proportion (or percentage) in each category. Interpret results.
+
+The first table below shows the counts (frequencies) of our contingency table, and the second table shows the percentages (proportions). The final table shows our chi-square value:
+
+```{r make_conTable}
+conTable <- table(fev$Sex, fev$Smoke)
+```
+
+```{r FreqTable}
+conTable %>% 
+  addmargins() %>% 
+  pander(caption="Contingency table demonstrating frequencies")
+```
+
+```{r propTable}
+prop.table(conTable) %>% pander(round=2, caption="Contingency table demonstrating proportions")
+```
+
+
+```{r chiSq}
+conTable %>% summary() %>% pander()
+# chisq.test(fev$Smoke, fev$Sex, simulate.p.value = T)
+```
+
+### Impression
+
+Looking at the margins we see that this sample is majority (90%) are not current smokers, and there are nearly equal numbers of males and females. 
+
+However, the breakdown within these groups in not split quite evenly. Among current smokers, 60% are female (compared to nonsmokers, which are 47% female), as illustrated by the table below. 
+
+```{r}
+prop.table(conTable, 2) %>% pander(round=2, caption="Column percentages")
+```
+
+We didn't have very many smokers in our sample, and the chi-square value didn't quite meet a p-value of p < 0.05. Therefore we fail to reject the null hypothesis that these are independent. 
+
+```{r Bayes, include=F}
+library(BayesianFirstAid)
+
+conTable %>%
+  # t() %>% 
+  bayes.prop.test() %>%
+  summary()
+  # plot()
+```
+
+***
+
+See Github for full code: https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats
+
+
+
 
