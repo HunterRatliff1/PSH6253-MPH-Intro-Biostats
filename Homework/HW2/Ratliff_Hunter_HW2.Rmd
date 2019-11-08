@@ -1,0 +1,312 @@
+---
+title: 'Homework #2'
+author: "Hunter Ratliff"
+date: "11/7/2019"
+output:
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  word_document: 
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+---
+
+\definecolor{bgblue}{RGB}{217, 237, 247}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(tidyverse)
+library(ggthemes)
+library(scales)
+options(tinytex.verbose = TRUE)
+
+# \definecolor{bgblue}{RGB}{217, 237, 247}
+# \textcolor{red}{easily} \colorbox{bgblue}{this text}
+# \colorbox{bgblue}{asd}
+# \noindent
+# {\color{bgblue} \rule{\linewidth}{1mm} }
+```
+
+# Section I
+
+
+\mbox{\colorbox{bgblue}{\begin{minipage}[t]{1.0\textwidth}
+
+
+1. The following data are derived from the Monthly Vital Statistics Report (October 1999) issued by the National Center for Health Statistics [10]. These data are pertinent to livebirths only.
+\newline\newline
+Suppose that infants are classified as low birthweight if they have a birthweight <2500 g and as normal birthweight if they have a birthweight $\geq$ 2500 g. Suppose that infants are also classified by length of gestation in the following five categories: <28 weeks, 28–31 weeks, 32–35 weeks, 36 weeks, and $\geq$ 37 weeks. Assume the probabilities of the different periods of gestation are as given in Table 3.8.
+\newline\newline
+Also assume that the probability of low birthweight is .949 given a gestation of <28 weeks, .702 given a gestation of 28–31 weeks, .434 given a gestation of 32–35 weeks, .201 given a gestation of 36 weeks, and .029 given a gestation of $\geq$ 37 weeks
+
+\end{minipage}}}
+
+Using the numbers above we get this table:
+
+```{r}
+LBW <- tibble(
+  GA    = c("<28", "28-31", "32-35", "36", "37+"),
+  PrGA  = c(.007, .012, .050, .037, .893),
+  PrLBW = c(.949, .702, .434, .201, .029)
+) 
+
+LBW %>%
+  rename(`Pr(GA)`=PrGA, `Pr(LBL|GA)`=PrLBW) %>%
+  pander()
+```
+
+## Question 3.50 
+
+> 3.50) *What is the probability of having a low birthweight (LBW) infant?*
+
+If we multiply the conditional probability (e.g. `Pr(LBL|GA=36)`) by the marginal probability (e.g. `Pr(GA=36)`) we get this table below, which I'll be using in the next three questions:
+
+```{r 3-50a}
+LBW %>%
+  mutate(`Pr(LBL|GA) * Pr(GA)` = PrGA * PrLBW) %>%
+  rename(`Pr(GA)`=PrGA, `Pr(LBL|GA)`=PrLBW) %>%
+  pander()
+```
+
+By summing these values, we find the probability of having a LBW infant to be:
+
+```{r 3-50b, echo=T, collapse=T}
+sum(LBW$PrGA * LBW$PrLBW)
+```
+
+
+## Question 3.51
+
+> 3.51) *Show that the events {length of gestation $\leq$ 31 weeks} and {low birthweight} are not independent.*
+
+We'll call **{A}**: _length of gestation $\leq$ 31 weeks_ and **{B}**: _low birthweight_. We already saw in the question before that `P(B) = 0.070101`, and we can calculate `P(A) = 0.012 + 0.007 = 0.019`. If **{A}** and **{B}** are dependent then: 
+
+$$P(A)P(B)\quad \neq\quad  P(A \cap B) = P(B|A) P(A)$$
+Substituting these in, we want to prove that $P(B) \neq  P(B|A)$ because the $P(A)$ on either side cancel. Using Bayes rule this equation becomes:
+
+$$ P(B) \quad \neq \quad\frac{P(A|B)P(B)}{P(A)} = \frac{(.007 \times .949)+(.012 \times .702)}{.019} = 0.793 $$
+
+This answer is not equal to $P(B) = 0.070101$, proving that {A} and {B} are not independent.
+
+```{r 3-51, echo=T, collapse=T}
+A <- 0.012 + 0.007
+B <- sum(LBW$PrGA * LBW$PrLBW) 
+
+B_given_A <- ( (.007*.949)+(.012*.702) )/A
+
+# Test to see if equal
+B == B_given_A
+```
+
+## Question 3.52
+
+> 3.52) *What is the probability of having a length of gestation $\leq$ 36 weeks given that an infant is low birthweight?*
+
+We'll call **{term}**: length of gestation 37+ weeks, **{preterm}**: length of gestation $\leq$ 36 weeks, and **{LBW}**: All low birthweight infants (same as set {B} in the question before). We also know that $P(preterm|LBW)\ =\ 1-P(term|LBW)$, so we'll make it easy and solve for $P(term|LBW)$. Again using Bayes:
+
+$$P(term|LBW) \quad = \quad \frac{P(LBW|term)\ P(term)}{P(LBW)}=\frac{.029 \times .893}{.0701}=0.3694$$
+
+This isn't our final answer, as we still need to solve for $P(preterm|LBW)\ =\ 1-P(term|LBW)$ which gives us our final answer of **~63%**.
+
+```{r 3-52, echo=T, collapse=T}
+PrLBW          <- sum(LBW$PrGA * LBW$PrLBW) 
+PrTerm         <- 0.893
+LBW_given_term <- 0.029
+
+term_given_LBW <- (LBW_given_term * PrTerm) / PrLBW
+
+# Our answer
+1 - term_given_LBW
+```
+
+
+
+# Section II
+
+\mbox{\colorbox{bgblue}{\begin{minipage}[t]{1.0\textwidth}
+
+2.	Suppose 20 percent of grade-school students nationwide develop influenza. There are 12 students in a grade-school class and some students develop influenza.
+
+\end{minipage}}}
+
+## Pr(X=5)
+
+> 2.1)	_What is the probability of obtaining **5 cases** in this class if the nationwide rate holds true?_ 
+
+```{r 2-1, echo=T, collapse=T}
+dbinom(x=5, size=12, prob=0.2)
+```
+
+$$Pr(X=5)\ \ =\  \ 0.05315$$
+
+
+```{r include=F}
+tibble(
+  x  = c(0:12),
+  Pr = dbinom(x=0:12, size=12, prob=0.2)
+) %>%
+  mutate(
+    Target = ifelse(x==5, F, T)
+  ) %>%
+  ggplot(aes(x=x, y=Pr)) + geom_col(aes(fill=Target))+
+  scale_y_continuous(labels = percent) +
+  guides(fill=F) +
+  theme_bw() +
+  labs(x="Sick students",
+       title="Pr(Exactly 5 sick)", subtitle = "n=12, p=0.2")
+
+```
+
+
+## Pr(X>=5)
+
+> 2.2)	_What is the probability of obtaining **at least 5 cases** in this class if the nationwide rate holds true?_
+
+```{r 2-2, echo=T, collapse=T}
+1 - pbinom(4,size=12, prob = 0.2)
+# sum(dbinom(x=5:12, size=12, prob=0.2))
+```
+
+$$Pr(X\geq5) = 1 - Pr(X\leq4)\ \ =\  \ 0.07255$$
+
+## Expected value & variance 
+
+> 2.3)	_What is the **expected value** and **variance** of number of students in the class who will develop influenza?_ 
+
+```{r 2-3, echo=T, collapse=T}
+flu <- tibble(
+  x = c(0:12),
+  Pr = dbinom(0:12, 12, 0.2)
+) %>%
+  mutate(
+    # Vectors of expected values
+    E = x * Pr,
+    
+    # Variance
+    Var = x^2 * Pr
+  ) 
+
+# Sum to find expected value
+sum(flu$E)
+
+# Sum to find variance
+sum(flu$Var) - sum(flu$E)^2
+
+## Same variance as np(1-p)
+# 12*0.2*(1-.2)
+```
+
+$$E(X) = `r sum(flu$E)` $$
+
+$$Var(X) = `r sum(flu$Var) - sum(flu$E)^2` $$
+
+
+# Section III
+
+\mbox{\colorbox{bgblue}{\begin{minipage}[t]{1.0\textwidth}
+
+3. Suppose the in-hospital case-specific mortality rate for skin graft patients who develop infections is 1 in 100, and that that a large multi-center study found that 15 of 1,000 patients who acquired infections died from complications associated with the infection.
+
+\end{minipage}}}
+
+n = 1,000
+
+p = 0.01
+
+q = 0.99
+
+
+
+## Which distributions approximate best?
+
+> 3.a) _Is either the normal or the Poisson approximation (or both) appropriate for computing probabilities for this problem? Justify your answer based on the rules of thumb discussed in class or in Rosner’s text._
+
+**Poisson:** This problem satisfies the requirements for the Poisson approximation (`n > 100` and `p < 0.01`) with our data having **n = 1,000** and **p = 0.01**. Although the `p` isn't technically below 0.01, it's awfully close. Additionally, a very similar problem is presented on the final slide of the discrete distribution lecture.
+
+**Normal:** The `npq` is greater than 5 (**npq = 9.9**), but **p = 0.01** is pretty close to zero. Ideally we'd have p in the [0.2-0.8] range, but you could argue that n is large enough to overcome that issue.
+
+Ultimately, I'd feel most comfortable using the Poisson approximation, but I wouldn't fault anyone for using the normal approximation. Below is a figure simulating these approximations, with the actual binomial distribution as the solid red line
+
+```{r 3a}
+infxn <- tibble(
+  x     = c(0:1000),
+  binom = dbinom(0:1000, size=1000, prob = 0.01),
+  pois  = dpois(0:1000, lambda = 10),
+  norm  = dnorm(0:1000, mean=10, sd=sqrt(9.9))
+) 
+
+
+infxn %>%
+  gather("Distribution", "Pr", -x) %>%
+  mutate(line = ifelse(Distribution=="binom", F,T)) %>%
+  ggplot(aes(x=x, y=Pr, color=Distribution)) +
+  geom_line(aes(linetype=line)) +
+  # geom_vline(xintercept = 15) +
+  guides(linetype=F) +
+  theme_bw() +
+  xlim(c(0,30)) +
+  labs(title="Simulated distributions")
+```
+
+## Normal approximation
+
+> 3.b) _Compute the Pr(X $\geq$ 15) using the **normal approximation** to the binomial._
+
+```{r 3b, echo=T, collapse=T}
+dnorm(15:1000, mean=10, sd=sqrt(9.9)) %>% sum()
+```
+
+$Pr(X \geq 15) = `r round(sum(dnorm(15:1000, mean=10, sd=sqrt(9.9))),4)`$
+
+## Poisson approximation
+
+> 3.c) _Compute the Pr(X $\geq$ 15) using the **Poisson approximation** to the binomial._
+
+```{r 3c, echo=T, collapse=T}
+ppois(14, lambda = 10, lower.tail = F)
+```
+
+$Pr(X \geq 15) = `r round(ppois(14, lambda = 10, lower.tail = F),4)`$
+
+## Which is the better approximation?
+
+> 3.d) _Compare and contrast your answers to 2) and 3) with the exact binomial solution (Pr(X $\geq$ 15)=0.0824. **Which is the better approximation** for this problem? Why?_
+
+It appears that the **Poisson approximation** gives the more accurate result, because the normal approximation undersetimates the values from 16 to 22. By zooming in on the same data from before, we can see that the normal approximation (blue line) underestimates the exact binomial (black dots) for values 16-22, whereas the Poisson approximation (red line) fits it nearly perfectly.
+
+
+```{r 3d}
+infxn %>%
+  gather("Distribution", "Pr", -x, -binom) %>%
+  filter(x<25, x>13) %>%
+  ggplot(aes(x=x, y=Pr)) + 
+  geom_point(aes(y=binom), size=1) +
+  geom_line(aes(color=Distribution)) +
+  geom_vline(xintercept = 15) +
+  scale_color_fivethirtyeight() +
+  theme_bw() +
+  labs(title="Approximation of binomial", caption = "Black points = actual values of binomial distribution")
+```
+
+
+```{r include=F}
+infxn %>%
+  mutate(
+    norm = norm-binom,
+    pois = pois-binom,
+    norm = cumsum(norm),
+    pois = cumsum(pois)
+  ) %>%
+  gather("Distribution", "Pr", -x, -binom) %>%
+  filter(x<20) %>%
+  ggplot(aes(x=x, y=Pr, color=Distribution)) + 
+  geom_line()
+```
+
+
+***
+
+See Github for full code: https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats
