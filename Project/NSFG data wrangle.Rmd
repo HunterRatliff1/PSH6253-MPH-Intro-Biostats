@@ -1,0 +1,153 @@
+---
+title: "NSFG data clean"
+author: "Hunter Ratliff"
+date: "11/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pander)
+```
+
+## preg data
+
+Here are the changes I've made:
+
+
+I added these variables:
+
+- **BirthWt:** if they refused (98) or didn't know (99) the variable __BIRTHWGT_LB1__, recode as `NA`. Note that there are already NA's for this variable (e.g. current pregnancy, abortion)
+- **GA:** same as above
+- **BeginPNcare:** same as above
+- **KnowPreg:** same as above
+
+```{r read_preg, message=F, warning=F}
+preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>%
+  mutate(
+    BirthWt     = ifelse(BIRTHWGT_LB1>95, NA, BIRTHWGT_LB1),
+    GA          = ifelse(WKSGEST>94, NA, WKSGEST),
+    BeginPNcare = ifelse(BGNPRENA>94, NA, BGNPRENA),
+    KnowPreg    = ifelse(KNEWPREG>94, NA, KNEWPREG)
+  ) %>%
+  mutate(
+    PMARPREG = recode(str_to_lower(PMARPREG), 
+                      "no"=F, 
+                      "yes"=T),
+    LBW1     = recode(LBW1, 
+                      "NO, NOT LOW BIRTH WEIGHT"=F,
+                      "YES, LOW BIRTH WEIGHT"=T)
+  ) %>%
+  mutate_if(is.character, factor) %>%
+  
+  filter(
+    GA < 45
+  )
+  
+preg %>%
+  summary() %>% 
+  pander(justify="left")
+```
+
+
+# Resp
+
+```{r read_resp, message=F, warning=F}
+resp <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/resp.csv") %>%
+  mutate(BMI = ifelse(BMI>94, NA, BMI)) %>%
+
+  mutate(
+    ASKSMOKE = recode(ASKSMOKE, "No"=F, "Yes"=T, "Don't know"=NA),
+    ASKPREG  = recode(ASKPREG, "No"=F, "Yes"=T, "Don't know"=NA),
+    ASKFOLIC = recode(ASKFOLIC, "No"=F, "Yes"=T, "Don't know"=NA),
+    USUALCAR = recode(USUALCAR, "No"=F, "Yes"=T, "Don't know"=NA),
+    
+    GENHEALT = na_if(GENHEALT, "Don't know"),
+    GENHEALT = na_if(GENHEALT, "Refused"),
+    GENHEALT = na_if(GENHEALT, "Not ascertained"),
+    GENHEALT = factor(GENHEALT, ordered = T,
+                      levels = c("Excellent", "Very good", "Good", "Fair", "Poor")),
+    
+    HISPRACE = recode(HISPRACE, "Non-Hispanic Black"="Black",
+                      "Non-Hispanic White"="White",
+                      "Non-Hispanic Other"="Other"),
+    
+    PREG_INT1 = na_if(PREG_INT1, "Could not be defined"),
+    PREG_INT1 = str_replace(PREG_INT1, "months", "mo"),
+    PREG_INT1 = recode(PREG_INT1, "60 mo or longer"="60+ mo"),
+    PREG_INT1 = factor(PREG_INT1, ordered = T,
+                       c("0-5 mo", "6-11 mo", "12-17 mo", "18-23 mo", "24-59 mo", "60+ mo"))
+    
+  ) %>%
+  mutate_if(is.character, factor) 
+
+resp %>%
+  # count(HIEDUC)
+  summary() %>% 
+  pander(justify="left")
+
+  # glimpse()
+```
+
+
+# Simple descriptive stats
+
+```{r}
+glimpse(preg)
+```
+
+
+# Relationship between tables
+
+The `preg` table has `r nrow(preg)` rows across `r length(unique(preg$CASEID))` unique subjects. This means that many women had more than one pregnancy, and the table below shows the breakdown of number of women by number of pregnancies
+
+```{r collapse=T, echo=F}
+preg %>%
+  count(CASEID, sort = T) %>%
+  rename(NumPregs=n) %>%
+  count(NumPregs) %>%
+  pander()
+```
+
+There are also `r nrow(anti_join(resp, preg))` records contained in `resp` that don't have corresponding rows in `preg`
+
+
+
+# Ignore
+
+```{r include=F, eval=F}
+# Just for fun
+library(randomForest)
+require(caTools)
+df <- preg %>% 
+  filter(OUTCOME!="CURRENT PREGNANCY") %>%
+  filter(!is.na(OUTCOME), !is.na(GA)) %>%
+  mutate_if(is.character, factor)
+
+colSums(is.na(df))
+
+# Partion data
+sample <- sample.split(df$OUTCOME, SplitRatio = .75)
+train <- subset(df, sample == TRUE)
+test  <- subset(df, sample == FALSE)
+
+# Random forest
+rf <- randomForest(
+  OUTCOME ~ AGECON + PREGORDR + WANTRESP + GA,
+  # proximity = T,
+  data=train
+)
+rf
+varImpPlot(rf)
+getTree(rf, k = 1, labelVar = T)
+plot(rf)
+varUsed(rf)
+rf %>% margin() %>% plot()
+
+
+# MDSplot(rf, train$OUTCOME)
+rm(df, sample, train, test, rf)
+```
+
+
