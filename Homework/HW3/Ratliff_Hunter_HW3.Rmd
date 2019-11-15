@@ -1,0 +1,309 @@
+---
+title: 'Homework #3'
+author: "Hunter Ratliff"
+date: "11/13/2019"
+output:
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  word_document: 
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(tidyverse)
+library(ggthemes)
+library(scales)
+options(tinytex.verbose = TRUE)
+
+### LATEX HELP ###
+# \definecolor{bgblue}{RGB}{217, 237, 247}
+# \textcolor{red}{easily} \colorbox{bgblue}{this text}
+# \colorbox{bgblue}{asd}
+# \noindent
+# {\color{bgblue} \rule{\linewidth}{1mm} }
+
+# see http://joshua.smcvt.edu/latex2e/_005cfbox-_0026-_005cframebox.html
+```
+
+You can use SAS/R to solve these. Show the SAS/R code used to find the answers and be sure to write out hypothesis and the equations as appropriate. Provide interpretations of all of your answers. 
+
+# Define the `find_CI` function
+
+First, I'll define a function that finds the confidence interval, given a signifigance level, mean, sd, and n
+
+```{r, echo=T, collapse=T}
+# Define function to return CI based on normal/t distribution
+find_CI <- function(SigLvl, x, n, s, population=T) {
+  p <- SigLvl + (1 - SigLvl)/2
+  
+  # if using population sigma, use Z score 
+  if(population) {
+    error <- qnorm(p) * s/sqrt(n)
+  } else({ # else use t-score
+    error <- qt(p, df=n-1) * s/sqrt(n)
+  })
+  
+  # Find CI's
+  lower_ci <- x - error
+  upper_ci <- x + error
+  
+  return( c(lower=lower_ci, upper=upper_ci) )
+}
+```
+
+# Question 1
+
+> 1. _A random sample of n=712 patient weighs is collected from a population of 20-29-year-old men and calculate a mean weight of $\bar{x}$=183 pounds. The population standard deviation, estimated from pilot data, is 40._
+
+For this problem, we'll use the Z-score by setting `find_CI(..., , population=T)` because we know the population sd
+
+## Find the 90% CI
+
+> 1a) _Calculate a 90% confidence interval._
+
+
+
+```{r, echo=T, collapse=T}
+find_CI(SigLvl=0.90, x=183, n=712, s=40)
+```
+
+90% CI = [`r find_CI(SigLvl=0.90, x=183, n=712, s=40)[[1]]` to `r find_CI(SigLvl=0.90, x=183, n=712, s=40)[[2]]`]
+
+## Find the 95% CI
+
+> 1b) _Calculate a 95% confidence interval._
+
+```{r, echo=T, collapse=T}
+find_CI(SigLvl=0.95, x=183, n=712, s=40)
+```
+
+95% CI = [`r find_CI(SigLvl=0.95, x=183, n=712, s=40)[[1]]` to `r find_CI(SigLvl=0.95, x=183, n=712, s=40)[[2]]`]
+
+
+## Comment on the difference between these two intervals.
+
+> 1c) _Comment on the difference between these two intervals._
+
+The 90% CI has a smaller range than the 95% CI, because it requires less confidence and has a smaller Z. Essentially, the higher confidence means a larger Z (to account for more area under the curve) which causes the range to be larger. See the table below as an example
+
+```{r, echo=F}
+tibble(CI_Lvl = c(.5, .80, .90, .95, .99, .999)) %>%
+  group_by(CI_Lvl) %>%
+  mutate(
+    Z        = qnorm( CI_Lvl + (1 - CI_Lvl)/2 ),
+    lower_ci = find_CI(CI_Lvl, x=183, n=712, s=40)[[1]],
+    upper_ci = find_CI(CI_Lvl, x=183, n=712, s=40)[[2]],
+    range    = upper_ci - lower_ci
+  ) %>% pander()
+
+
+# tibble(value = rnorm(172, mean=183, sd=40))
+
+```
+
+
+
+# Question 2
+
+> _2. The data in Table 2.15 (p.37) present Serum-cholesterol levels (mg/dL) before and after adopting a vegetarian diet._
+
+```{r}
+Chol <- read_csv("Cholesterol.csv")
+
+Chol %>% head() %>% pander(caption="First few obvs of Cholesterol.csv")
+```
+
+
+## Find the 95% CI
+
+> 2a) _Compute a 95% confidence interval for the mean difference in Serum-cholesterol levels. _
+
+**Null hypothesis (H0):** true difference in means equals 0      
+**Alternative hypothesis (Ha):** true difference in means is not equal to 0
+
+```{r, echo=T}
+Chol <- read_csv("Cholesterol.csv")
+
+t.test(Chol$Before, Chol$After, paired = T)
+```
+
+This gives us a **95% CI**  of [12.445 - 26.638]. Additional info from the test is in table below:
+
+```{r}
+pander(t.test(Chol$Before, Chol$After, paired = T))
+```
+
+The two other ways to calculate it below also give the same results:
+
+```{r, echo=T, collapse=T}
+# Same result with one-way t-test
+t.test(Chol$Difference, var.equal = T)$conf.int
+
+# Same result using my find_CI function
+find_CI(SigLvl = .95, n = 24, 
+        x = mean(Chol$Difference), 
+        s = sd(Chol$Difference),
+        population = F)
+```
+
+
+
+
+
+
+
+## When to use Z vs T
+
+> 2b) _Explain when you should use the z or the t-distributions when constructing confidence intervals._
+
+You use z-distributions when you know the population's standard deviation ($\sigma$). You can also use the z-distribution if your sample is large enough (e.g. n$\geq$ 30) as the Z and T socres begin to approximate each other.
+
+```{r, eval=F, include=F}
+tibble(
+  t = qt(.975, df=1:100),
+  z = qnorm(.975),
+  x = 1:100
+) %>%
+  ggplot(aes(x=x, y=t)) +
+  geom_line(color="red") +
+  geom_hline(yintercept = qnorm(.975))
+
+```
+
+
+
+# Question 3
+
+> 3. _Renal disease: The mean serum-creatinine level measured in 12 patients 24 hours after they received a newly proposed antibiotic was 1.2mg/dL._
+
+## Test if difference in means 
+
+> 3a) _If the mean and **standard deviation** of serum creatinine in the **general population** are 1.0 and 0.4 mg/dL, respectively, then, using a significance level of .05, test whether the mean serum-creatinine level in this group is different from that of the general population._
+
+**H0:** true difference in means = 0     
+**Ha:** true difference in means does not equal 0
+
+```{r, echo=T, collapse=T}
+# Define values
+n <- 12
+x_bar <- 1.2
+mu    <- 1.0
+s <- .4
+
+# Find Z, since we know population sd
+se <- s / sqrt(n)
+z <- (x_bar - mu) / se
+
+# p-value
+2*pnorm(-abs(z))
+
+# 95% CI
+find_CI(.95, x=x_bar, n=n, s=s, population = T)
+```
+
+Given the results above, we **fail to reject the null hypothesis**
+
+
+## p-value
+
+> 3b) _What is the p-value for the test?_
+
+As demonstrated above, the p-value for this test is `r round(2*pnorm(-abs(z)), 3)`
+
+```{r, echo=T, collapse=T}
+2*pnorm(-abs(z))
+```
+
+
+## Using t for the the same problem
+
+> 3c) _Suppose the sample standard deviation of serum creatinine in Problem 3a is 0.6mg/dL. Assume that the standard deviation of serum creatinine is not known in the general population, and perform the hypothesis test in Problem 3a. Report a p-value._
+
+For this problem we'll use the same hypotheses as before, but now with our `s = 0.6mg/dL`. This also means we'll need to do a t-test (since n=12).
+
+```{r, echo=T, collapse=T}
+s <- .6
+
+# Find T
+se <- s / sqrt(n)
+t <- (x_bar - mu) / se
+
+# p-value
+2*pt(-abs(t),df=n-1)
+```
+
+Again, we fail to reject the null with a p = `r round(2*pt(-abs(t),df=n-1), 3)`
+
+
+## Report the CI
+
+> 3d) _Compute a two-sided 95% CI for the true mean serum-creatinine level in Problem 3c._
+
+```{r, echo=T, collapse=T}
+# 95% CI
+find_CI(.95, x=x_bar, n=n, s=s, population = FALSE)
+```
+
+95% CI = `r find_CI(.95, x=x_bar, n=n, s=s, population = F)[[1]]` to `r find_CI(.95, x=x_bar, n=n, s=s, population = F)[[2]]`
+
+
+# Question 4
+
+> 4. _The drug diflunisal is used to treat mild to moderate pain due to osteoarthritis (OA) and rheumatoid arthritis (RA). The ocular effects of diflunisal had not been considered until a study was conducted on its effect on intraocular pressure in glaucoma patients who were already receiving maximum therapy for glaucoma. _
+
+## Two-sided t-test
+
+> 4a) _The change in intraocular pressure after administration of diflunisal among 30 patients whose standard therapy was topical drugs only has a mean -0.7 and sample standard deviation 2.1 mm Hg. Does diflunisal has **any effect** on the intraocular pressure? State the hypothesis, perform the test and interpret._
+
+**H0:** true difference in means = 0     
+**Ha:** true difference in means does not equal 0
+
+```{r, echo=T, collapse=T}
+n <- 30
+x_bar <- -0.7
+s <- 2.1
+
+# t value
+t <- x_bar / (s / sqrt(n))
+t
+
+# p-value
+p <- 2*pt(-abs(t),df=n-1)
+p
+```
+
+This tests yields t=`r round(t, 4)` on df=`r n-1`, with a resulting p = `r round(p,4)`. We therefore **fail to reject the null hypothesis**.
+
+## 95% CI
+
+> 4b) _Compute the 95% CI for the mean change in pressure in 8.20. Interpret._
+
+```{r, echo=T, collapse=T}
+find_CI(.95, x=-.7, n=30, s=2.1, population = FALSE)
+```
+
+95% CI = `r find_CI(.95, x=-.7, n=30, s=2.1, population = FALSE)[[1]]` - `r find_CI(.95, x=-.7, n=30, s=2.1, population = FALSE)[[1]]`.  
+This means that across repeated samples of size `n`, we would expect that around 95% of those confidence intervals would contain the population mean.
+
+## One-sided t-test           
+
+> 4c) _Does diflunisal **reduce** intraocular pressure? State the hypothesis, perform the test and interpret. (Compare it to the results in 4a)_
+
+**H0:** true difference in means $\leq$ 0     
+**Ha:** true difference in means is greater than 0
+
+```{r, echo=T, collapse=T}
+# One sided p-value
+p <- pt(t,df=n-1)
+p
+```
+
+In this case, the p-value (p=`r round(p,4)`) is half the size of our p-value in problem 4a. Unlike in 4a), if we use these null & alternative hypotheses, we can **reject this null hypothesis** (true difference in means $\leq$ 0) at the signifigance level alpha=0.05.
+
+
