@@ -33,9 +33,9 @@ options(tinytex.verbose = TRUE)
 
 You can use SAS/R to solve these. Show the SAS/R code used to find the answers and be sure to write out hypothesis and the equations as appropriate. Provide interpretations of all of your answers. 
 
-# Define the `find_CI` function
+***
 
-First, I'll define a function that finds the confidence interval, given a signifigance level, mean, sd, and n
+First, I'll define a function, `find_CI()` that finds the confidence interval, given a signifigance level, mean, sd, and n
 
 ```{r, echo=T, collapse=T}
 # Define function to return CI based on normal/t distribution
