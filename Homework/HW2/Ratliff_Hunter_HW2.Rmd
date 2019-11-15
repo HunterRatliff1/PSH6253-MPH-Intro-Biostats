@@ -23,11 +23,14 @@ library(ggthemes)
 library(scales)
 options(tinytex.verbose = TRUE)
 
+### LATEX HELP ###
 # \definecolor{bgblue}{RGB}{217, 237, 247}
 # \textcolor{red}{easily} \colorbox{bgblue}{this text}
 # \colorbox{bgblue}{asd}
 # \noindent
 # {\color{bgblue} \rule{\linewidth}{1mm} }
+
+# see http://joshua.smcvt.edu/latex2e/_005cfbox-_0026-_005cframebox.html
 ```
 
 # Section I
@@ -62,7 +65,7 @@ LBW %>%
 
 > 3.50) *What is the probability of having a low birthweight (LBW) infant?*
 
-If we multiply the conditional probability (e.g. `Pr(LBL|GA=36)`) by the marginal probability (e.g. `Pr(GA=36)`) we get this table below, which I'll be using in the next three questions:
+If we multiply the conditional probability (e.g. `Pr(LBL|GA=36)`) by the marginal probability (e.g. `Pr(GA=36)`) we get this table below, which I'll be using in the next two questions:
 
 ```{r 3-50a}
 LBW %>%
@@ -85,9 +88,9 @@ sum(LBW$PrGA * LBW$PrLBW)
 We'll call **{A}**: _length of gestation $\leq$ 31 weeks_ and **{B}**: _low birthweight_. We already saw in the question before that `P(B) = 0.070101`, and we can calculate `P(A) = 0.012 + 0.007 = 0.019`. If **{A}** and **{B}** are dependent then: 
 
 $$P(A)P(B)\quad \neq\quad  P(A \cap B) = P(B|A) P(A)$$
-Substituting these in, we want to prove that $P(B) \neq  P(B|A)$ because the $P(A)$ on either side cancel. Using Bayes rule this equation becomes:
+We want to prove that $P(B) \neq  P(B|A)$ (because the $P(A)$'s on either side cancel), and we can use Bayes rule to solve for $P(B|A)$:
 
-$$ P(B) \quad \neq \quad\frac{P(A|B)P(B)}{P(A)} = \frac{(.007 \times .949)+(.012 \times .702)}{.019} = 0.793 $$
+$$ P(B|A) \quad = \quad\frac{P(A|B)P(B)}{P(A)} = \frac{(.007 \times .949)+(.012 \times .702)}{.019} = 0.793 $$
 
 This answer is not equal to $P(B) = 0.070101$, proving that {A} and {B} are not independent.
 
@@ -105,11 +108,11 @@ B == B_given_A
 
 > 3.52) *What is the probability of having a length of gestation $\leq$ 36 weeks given that an infant is low birthweight?*
 
-We'll call **{term}**: length of gestation 37+ weeks, **{preterm}**: length of gestation $\leq$ 36 weeks, and **{LBW}**: All low birthweight infants (same as set {B} in the question before). We also know that $P(preterm|LBW)\ =\ 1-P(term|LBW)$, so we'll make it easy and solve for $P(term|LBW)$. Again using Bayes:
+We'll call **{term}**: _length of gestation 37+ weeks_, **{preterm}**: _length of gestation $\leq$ 36 weeks_, and **{LBW}**: _All low birthweight infants_ (same as set {B} in the question before). We also know that $P(preterm|LBW)\ =\ 1-P(term|LBW)$, so we'll make it easy and solve for $P(term|LBW)$. Again using Bayes:
 
 $$P(term|LBW) \quad = \quad \frac{P(LBW|term)\ P(term)}{P(LBW)}=\frac{.029 \times .893}{.0701}=0.3694$$
 
-This isn't our final answer, as we still need to solve for $P(preterm|LBW)\ =\ 1-P(term|LBW)$ which gives us our final answer of **~63%**.
+This isn't our final answer, as we still need to solve for $P(preterm|LBW)\ =\ 1-P(term|LBW)$ which gives us our final answer of **63%**.
 
 ```{r 3-52, echo=T, collapse=T}
 PrLBW          <- sum(LBW$PrGA * LBW$PrLBW) 
@@ -178,15 +181,12 @@ $$Pr(X\geq5) = 1 - Pr(X\leq4)\ \ =\  \ 0.07255$$
 
 ```{r 2-3, echo=T, collapse=T}
 flu <- tibble(
-  x = c(0:12),
+  x  = c(0:12),
   Pr = dbinom(0:12, 12, 0.2)
 ) %>%
   mutate(
-    # Vectors of expected values
-    E = x * Pr,
-    
-    # Variance
-    Var = x^2 * Pr
+    E   = x * Pr,   # Vectors of expected values
+    Var = x^2 * Pr  # Variance
   ) 
 
 # Sum to find expected value
@@ -196,7 +196,7 @@ sum(flu$E)
 sum(flu$Var) - sum(flu$E)^2
 
 ## Same variance as np(1-p)
-# 12*0.2*(1-.2)
+# 12*0.2*(1-0.2)
 ```
 
 $$E(X) = `r sum(flu$E)` $$
@@ -275,7 +275,7 @@ $Pr(X \geq 15) = `r round(ppois(14, lambda = 10, lower.tail = F),4)`$
 
 > 3.d) _Compare and contrast your answers to 2) and 3) with the exact binomial solution (Pr(X $\geq$ 15)=0.0824. **Which is the better approximation** for this problem? Why?_
 
-It appears that the **Poisson approximation** gives the more accurate result, because the normal approximation undersetimates the values from 16 to 22. By zooming in on the same data from before, we can see that the normal approximation (blue line) underestimates the exact binomial (black dots) for values 16-22, whereas the Poisson approximation (red line) fits it nearly perfectly.
+It appears that the **Poisson approximation** gives the more accurate result, because the normal approximation undersetimates the Pr of values from 16 to 22. By zooming in on the same data from before, we can see that the normal approximation (blue line) underestimates the exact binomial (black dots) where x is 16-22, whereas the Poisson approximation (red line) fits it nearly perfectly.
 
 
 ```{r 3d}
