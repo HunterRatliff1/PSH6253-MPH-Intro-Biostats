@@ -7,8 +7,14 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
 library(pander)
+library(scales)
+library(randomForest)
+require(caTools)
+library(caret)
+library(leaps)
+library(MASS)
+library(tidyverse)
 ```
 
 ## preg data
@@ -24,7 +30,7 @@ I added these variables:
 - **KnowPreg:** same as above
 
 ```{r read_preg, message=F, warning=F}
-preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>%
+preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>% 
   mutate(
     BirthWt     = ifelse(BIRTHWGT_LB1>95, NA, BIRTHWGT_LB1),
     GA          = ifelse(WKSGEST>94, NA, WKSGEST),
@@ -32,18 +38,35 @@ preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>%
     KnowPreg    = ifelse(KNEWPREG>94, NA, KNEWPREG)
   ) %>%
   mutate(
-    PMARPREG = recode(str_to_lower(PMARPREG), 
-                      "no"=F, 
+    PMARPREG = recode(str_to_lower(PMARPREG),
+                      "no"=F,
                       "yes"=T),
-    LBW1     = recode(LBW1, 
+    POSTSMKS = recode(POSTSMKS,
+                      "No"=F,
+                      "Yes"=T),
+    LBW1     = recode(LBW1,
                       "NO, NOT LOW BIRTH WEIGHT"=F,
-                      "YES, LOW BIRTH WEIGHT"=T)
+                      "YES, LOW BIRTH WEIGHT"=T),
+    EVUSEINT = recode(EVUSEINT,
+                      "No"=F,
+                      "Yes"=T,
+                      "Refused"=NA,"Don't know"=NA),
+    STOPDUSE = recode(STOPDUSE,
+                      "No"=F,
+                      "Yes"=T,
+                      "Refused"=NA,"Don't know"=NA),
+    WHYSTOPD = recode(WHYSTOPD,
+                      "No"=F,
+                      "Yes"=T,
+                      "Don't know"=NA)
   ) %>%
   mutate_if(is.character, factor) %>%
   
   filter(
-    GA < 45
+    GA < 45, OUTCOME != "CURRENT PREGNANCY"
   )
+
+preg %>% write_rds("data/preg.RDS")
   
 preg %>%
   summary() %>% 
@@ -82,6 +105,8 @@ resp <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/resp.csv") %>%
   ) %>%
   mutate_if(is.character, factor) 
 
+resp %>% write_rds("data/resp.RDS")
+
 resp %>%
   # count(HIEDUC)
   summary() %>% 
@@ -90,11 +115,53 @@ resp %>%
   # glimpse()
 ```
 
+# Missing data
+
+## Preg
+
+```{r}
+# Number on non-missing observations
+(nrow(preg) - colSums(is.na(preg))) %>% sort(decreasing=T)
+
+# As percent of entire dataset
+round(colSums(is.na(preg)) / nrow(preg), 4) %>% sort(decreasing=T)
+
+# Hmisc::describe(preg)
+preg %>%
+  mutate(
+    BeginPNcare = ifelse(is.na(BeginPNcare), T, F),
+    KnowPreg    = ifelse(is.na(KnowPreg), T, F)
+  ) %>%
+  group_by(OUTCOME) %>%
+  # Find number of missing obvs
+  summarise(
+    BeginPNcare = sum(BeginPNcare)/n(),
+    KnowPreg    = sum(KnowPreg)/n(),
+    n=n()
+  )
+```
+
+## Resp
+
+```{r}
+# Number on non-missing observations
+(nrow(resp) - colSums(is.na(resp))) %>% sort(decreasing=T)
+
+# As percent of entire dataset
+round(colSums(is.na(resp)) / nrow(resp), 4) %>% sort(decreasing=T)
+```
+
+
+
 
 # Simple descriptive stats
 
+position = fill on the histogram for GA
+
 ```{r}
-glimpse(preg)
+preg %>%
+  ggplot(aes(x=GA, fill=OUTCOME)) +
+  geom_histogram(position = "fill")
 ```
 
 
@@ -121,11 +188,12 @@ There are also `r nrow(anti_join(resp, preg))` records contained in `resp` that 
 library(randomForest)
 require(caTools)
 df <- preg %>% 
-  filter(OUTCOME!="CURRENT PREGNANCY") %>%
+  filter(OUTCOME!="CURRENT PREGNANCY", OUTCOME!="ECTOPIC PREGNANCY") %>%
   filter(!is.na(OUTCOME), !is.na(GA)) %>%
-  mutate_if(is.character, factor)
+  mutate_if(is.character, factor) %>%
+  mutate(OUTCOME=factor(OUTCOME))
 
-colSums(is.na(df))
+colSums(is.na(df)) / nrow(df)
 
 # Partion data
 sample <- sample.split(df$OUTCOME, SplitRatio = .75)
@@ -134,11 +202,13 @@ test  <- subset(df, sample == FALSE)
 
 # Random forest
 rf <- randomForest(
-  OUTCOME ~ AGECON + PREGORDR + WANTRESP + GA,
+  OUTCOME ~ AGECON + PREGORDR + WANTRESP + GA + PMARPREG + POVERTY,
   # proximity = T,
-  data=train
+  na.action=na.omit,
+  data=df
 )
 rf
+round(importance(rf), 2)
 varImpPlot(rf)
 getTree(rf, k = 1, labelVar = T)
 plot(rf)
@@ -150,4 +220,43 @@ rf %>% margin() %>% plot()
 rm(df, sample, train, test, rf)
 ```
 
+# Some more ML
 
+See this [link](http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/154-stepwise-regression-essentials-in-r/).
+
+```{r}
+library(tidyverse)
+library(caret)
+library(leaps)
+
+# Fit the full model 
+full.model <- lm(mpg ~., data = mtcars)
+
+####### USING step #######
+full.model %>%
+  step() %>%
+  # add1(scope = .~.+ .^2, test="Chisq")
+  summary()
+
+
+
+####### USING MASS #######
+library(MASS)
+# Stepwise regression model
+stepAIC(full.model, direction = "both", 
+        trace = 2) %>%
+  plot()
+
+
+
+####### USING leaps::regsubsets() #######
+# allows max number of predictors
+glimpse(swiss)
+regsubsets(Fertility~., data = swiss, nvmax = 4,
+                     method = "seqrep") %>%
+  summary()
+
+# compare to using step
+lm(Fertility~., data = swiss) %>% step() %>% summary()
+
+```

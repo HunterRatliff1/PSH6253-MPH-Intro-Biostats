@@ -1,0 +1,231 @@
+---
+title: "Some models"
+author: "Hunter Ratliff"
+date: "11/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pander)
+library(scales)
+library(randomForest)
+library(survey)
+require(caTools)
+library(caret)
+library(leaps)
+library(MASS)
+library(tidyverse)
+# library(Epi)        # Epi::clogistic for conditional logit
+# library(survival)   # survival::clogit()
+### survival allows for weights
+
+
+
+preg <- read_rds("data/preg.RDS")
+resp <- read_rds("data/resp.RDS")
+ 
+```
+
+## Outcome variables & predictors
+
+```{r}
+data <-left_join(preg, resp) %>%
+  # must be >= 20 years old and have live birth
+  filter(AGECON>=20, OUTCOME=="LIVE BIRTH") %>%
+  
+  
+  # OUTCOMES
+  mutate(
+    # Know if pregnant by 6 weeks
+    KnowPreg = factor(if_else(KnowPreg<=6, "Yes", "No")), 
+    
+    # Got prenatal care in first trimester
+    gotPNcare = factor(if_else(BGNPRENA<13, "Yes", "No")),
+    
+    # Premature delivery
+    PreMe = factor(if_else(GA<37, "Premature", "Term"))
+  ) %>% 
+  
+  # PREDICTORS
+  mutate(
+    Trying = cut(TRYSCALE, breaks = c(0,5,10), labels = c("No",  "Yes")),
+    Wanted = cut(WANTSCAL, breaks = c(0,2,7,10), labels = c("No", "Maybe", "Yes"))
+  ) %>%
+  
+  # REORDER
+  select(CASEID, KnowPreg, gotPNcare, PreMe, LBW=LBW1, 
+         AGECON, PMARPREG, EDUCAT, HISPRACE, BMI, POVERTY,
+         USUALCAR, 
+         TRYSCALE, WANTSCAL, Trying, Wanted, GA,
+         wgt=WGT2015_2017, SECU, strata=SEST
+         # everything()
+  ) %>%
+  na.omit()
+
+qplot(x=WANTSCAL, fill=Wanted, data=data)
+qplot(x=TRYSCALE, fill=Trying, data=data)
+
+
+data %>%
+  glimpse()
+```
+
+# Survey design + weighted glm
+
+```{r}
+dsgn <- svydesign(ids=~CASEID, strata = ~strata, weights=~wgt, data=data)
+
+# use quasibinomial to suppress warning
+"LBW~Trying+Wanted+HISPRACE+POVERTY+EDUCAT+AGECON+GA" %>%
+  as.formula() %>%
+  glm(., data=data, family=binomial(link = "logit")) %>%
+  # survey::svyglm(., dsgn, family=binomial) %>%
+  # .$AIC
+  summary()
+```
+
+
+# Unweighted models
+
+```{r model1}
+df <- preg %>%
+  filter(OUTCOME=="LIVE BIRTH") %>%
+  
+  # Make wantedness bianary
+  mutate(Wanted = case_when(WANTRESP=="RIGHT TIME"               ~ TRUE,
+                            WANTRESP=="DON'T KNOW, NOT SURE"     ~ NA,
+                            WANTRESP=="DIDN'T CARE, INDIFFERENT" ~ NA,
+                            TRUE ~ FALSE
+  )) %>% left_join(resp)
+
+
+
+# Linear model
+lm(BirthWt ~ GA + POVERTY + AGECON + Wanted + HISPRACE + EDUCAT + BMI, 
+   data=df, subset = (OUTCOME=="LIVE BIRTH")) %>%
+  step() %>%
+  # add1(scope = .~.+ .^2, test="Chisq")
+  summary()
+
+
+# Logit regression
+df.glm <- df %>%
+  ###  !!!   Define variables here   !!!  ###
+  dplyr::select(LBW1, GA, POVERTY, AGECON, Wanted, HISPRACE, EDUCAT, BMI) %>%
+  na.omit()
+
+
+# Simple run of glm
+glm(LBW1 ~ .,
+    data=df.glm, family = binomial(link = "logit")) %>%
+  MASS::stepAIC(trace = FALSE) %>%
+  summary()
+
+glm(LBW1 ~ .,
+    data=df.glm, family = binomial(link = "logit")) %>%
+  MASS::stepAIC(~ .^2, trace = FALSE) %>%
+  .$anova
+ 
+
+
+
+library(randomForest)
+require(caTools)
+# Random forest
+rf <- randomForest(
+  LBW1 ~ .,
+  na.action=na.omit,
+  data=df.glm
+)
+rf
+round(importance(rf), 2)
+varImpPlot(rf)
+getTree(rf, k = 1, labelVar = T)
+plot(rf)
+rm(rf)
+```
+
+
+# Model selection with step()
+
+```{r}
+subUse <- preg %>%
+  filter(CASEID %in% filter(resp, !is.na(PRENAT12))$CASEID) %>%
+  group_by(CASEID) %>%
+  filter(PREGORDR==max(PREGORDR)) %>%
+  right_join(
+    filter(resp, !is.na(PRENAT12))
+  ) %>%
+  ungroup() %>% dplyr::select(-CASEID) %>%
+  
+  filter(OUTCOME=="LIVE BIRTH") %>%
+  
+  # Make wantedness bianary
+  mutate(Wanted = case_when(WANTRESP=="RIGHT TIME"               ~ TRUE,
+                            WANTRESP=="DON'T KNOW, NOT SURE"     ~ NA,
+                            WANTRESP=="DIDN'T CARE, INDIFFERENT" ~ NA,
+                            TRUE ~ FALSE
+  )) %>%
+  dplyr::select(LBW1, GA, POVERTY, AGECON, Wanted, HISPRACE, EDUCAT, BMI,
+                SMOKE12:INJECT12, -BINGE12) %>%
+  mutate(SMOKE12 = replace_na(SMOKE12, "None")) %>%
+  mutate(SMOKE=SMOKE12) %>%
+  
+  # Simplify these to binaries
+  mutate_at(vars(contains("12")), function(x) ifelse(x=="Never"|x=="None", F, T)) %>%
+  mutate(SubUse = ifelse(POT12 | COC12 | CRACK12 | CRYSTMTH12 | INJECT12, T, F)) %>%
+  
+  na.omit() %>%
+  dplyr::select(LBW1:DRINK12, SubUse, SMOKE)
+
+# subUse %>%
+#   
+#   count(POT12)
+
+
+###### Random forest
+library(randomForest)
+require(caTools)
+rf <- randomForest(
+  LBW1 ~ .,
+  na.action=na.omit,
+  data=subUse
+)
+rf
+round(importance(rf), 2)
+varImpPlot(rf)
+getTree(rf, k = 1, labelVar = T)
+rm(rf)
+
+
+  
+# GLM
+glm(LBW1 ~ GA + AGECON + POVERTY + BMI + SMOKE12 + EDUCAT + HISPRACE + SubUse,
+    data=subUse, family = binomial(link = "logit")) %>%
+  # MASS::stepAIC(, trace = FALSE) %>%
+  MASS::stepAIC(~ .^2, trace = FALSE) %>%
+  # plot()
+  summary()
+  # .$anova
+```
+
+
+# Attempting conditional logit
+
+```{r}
+library(survival)
+
+
+data %>%
+  # must be >= 20 years old and have live birth
+  # filter(AGECON>=20, OUTCOME=="LIVE BIRTH") %>%
+  
+  mutate(Wanted = ifelse(WANTRESP=="RIGHT TIME", "Wanted", "Unwanted")) %>%
+  group_by(Wanted, CASEID) %>%
+  summarise(n=n()) %>%
+  spread(Wanted, n) %>%
+  
+  na.omit()
+```
+
