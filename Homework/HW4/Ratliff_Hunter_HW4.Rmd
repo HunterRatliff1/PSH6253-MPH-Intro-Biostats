@@ -56,7 +56,7 @@ $$H_0: P(NewDrug > propranolol) = P(NewDrug < propranolol)$$
 binom.test(15, n=25)
 ```
 
-At a p-value of p=`r round(binom.test(15, n=25)$p.value,3)`, we do not reject the null hypothesis.
+At a p-value of p=`r round(binom.test(15, n=25)$p.value,3)`, we do not reject the null hypothesis^[I know the instructions say that we need to report which hypothesis we are testing. If I don't explicity include it in the write up, check the R output as it may be listed there].
 
 # Question 2
 
@@ -208,7 +208,7 @@ Hosp <- readr::read_csv("Hospital.csv") %>%
 
 > 4a. `r kableExtra::text_spec("What significance test can be used to assess whether there is a relationship between receiving an antibiotic and receiving a bacterial culture while in the hospital? (question 10.6)", color = "purple")`
 
-Considering that this is categorical data, the Chi-squared test would be ideal. However, looking at the contingency table below, I expect at least 20% of cells have an expected value less than 5^[Indeed, 50% of cells have an expected value less than 5]. Because this is the case, we'll use `fisher.test()`^[It could also be argued that we should be using McNemar's test (since you shouldn't be getting antibiotics without a blood culture), but it still gives a p-value of p=1 anyways].
+Considering that this is categorical data, the Chi-squared test would be ideal. However, looking at the contingency table below, I expect at least 20% of cells have an expected value less than five^[Indeed, 50% of cells have an expected value less than 5]. Because this is the case, we'll use `fisher.test()`^[It could also be argued that we should be using McNemar's test (since you shouldn't be getting antibiotics without a blood culture), but it still gives a p-value of p=1 anyways].
 
 ```{r}
 chisq.test(Hosp$Antibio, Hosp$Bact_cul)$observed

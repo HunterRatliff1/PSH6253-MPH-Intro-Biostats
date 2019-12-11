@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  21 NOV 2019 10:10
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  7 DEC 2019 15:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**Ratliff_Hunter_HW4.tex
-(./Ratliff_Hunter_HW4.tex
+**Ratliff_Hunter_HW5.tex
+(./Ratliff_Hunter_HW5.tex
 LaTeX2e <2015/01/01>
 Babel <3.9l> and hyphenation patterns for 79 languages loaded.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/base/article.cls
@@ -855,8 +855,8 @@ Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1357.
 Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1358.
 Package xcolor Info: Model `Gray' substituted by `gray' on input line 1359.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1360.
-) (./Ratliff_Hunter_HW4.aux)
-\openout1 = `Ratliff_Hunter_HW4.aux'.
+) (./Ratliff_Hunter_HW5.aux)
+\openout1 = `Ratliff_Hunter_HW5.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 147.
 LaTeX Font Info:    ... okay on input line 147.
@@ -945,9 +945,9 @@ Package: gettitlestring 2010/12/03 v1.4 Cleanup title references (HO)
 LaTeX Info: Redefining \ref on input line 147.
 LaTeX Info: Redefining \pageref on input line 147.
 LaTeX Info: Redefining \nameref on input line 147.
-(./Ratliff_Hunter_HW4.out) (./Ratliff_Hunter_HW4.out)
+(./Ratliff_Hunter_HW5.out) (./Ratliff_Hunter_HW5.out)
 \@outlinefile=\write4
-\openout4 = `Ratliff_Hunter_HW4.out'.
+\openout4 = `Ratliff_Hunter_HW5.out'.
 
 (/usr/local/texlive/2015/texmf-dist/tex/context/base/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -974,257 +974,326 @@ G,.JBIG2,.JB2,.eps]
 (/usr/local/texlive/2015/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
-)) (./Ratliff_Hunter_HW4.toc
-LaTeX Font Info:    Try loading font information for OT1+lmr on input line 2.
+)) (./Ratliff_Hunter_HW5.toc
+LaTeX Font Info:    Try loading font information for OT1+lmr on input line 11.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-LaTeX Font Info:    Try loading font information for OML+lmm on input line 2.
+LaTeX Font Info:    Try loading font information for OML+lmm on input line 11.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-LaTeX Font Info:    Try loading font information for OMS+lmsy on input line 2.
+LaTeX Font Info:    Try loading font information for OMS+lmsy on input line 11.
+
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-LaTeX Font Info:    Try loading font information for OMX+lmex on input line 2.
+LaTeX Font Info:    Try loading font information for OMX+lmex on input line 11.
+
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 2.
+(Font)              <10> on input line 11.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 2.
+(Font)              <7> on input line 11.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 2.
-LaTeX Font Info:    Try loading font information for U+msa on input line 2.
+(Font)              <5> on input line 11.
+LaTeX Font Info:    Try loading font information for U+msa on input line 11.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 ) (/usr/local/texlive/2015/texmf-dist/tex/latex/microtype/mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 2.
+LaTeX Font Info:    Try loading font information for U+msb on input line 11.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) (/usr/local/texlive/2015/texmf-dist/tex/latex/microtype/mt-msb.cfg
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 ))
 \tf@toc=\write5
-\openout5 = `Ratliff_Hunter_HW4.toc'.
+\openout5 = `Ratliff_Hunter_HW5.toc'.
 
-[1
 
-{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+Package xcolor Warning: Incompatible color definition on input line 157.
 
-Package xcolor Warning: Incompatible color definition on input line 196.
-
-LaTeX Font Info:    Try loading font information for T1+lmtt on input line 197.
+LaTeX Font Info:    Try loading font information for T1+lmtt on input line 158.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 198.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 161.
 
-Package xcolor Warning: Incompatible color definition on input line 211.
+Package xcolor Warning: Incompatible color definition on input line 167.
 
 
-Package xcolor Warning: Incompatible color definition on input line 211.
+Package xcolor Warning: Incompatible color definition on input line 167.
 
+
+Package xcolor Warning: Incompatible color definition on input line 174.
+
+
+Package xcolor Warning: Incompatible color definition on input line 181.
+
+
+Package xcolor Warning: Incompatible color definition on input line 181.
+
+[1
+
+{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+<Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-3-1.pdf, id=90, 242.9075pt
+ x 242.9075pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-3-1.pdf Graphic file 
+(type pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-3-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-3-
+1.pdf used on input line 261.
+(pdftex.def)             Requested size: 242.90689pt x 242.90689pt.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 216.
+(Font)              <8> on input line 277.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 216.
+(Font)              <6> on input line 277.
+[2 <./Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-3-1.pdf>]
 
-Package xcolor Warning: Incompatible color definition on input line 233.
+Package xcolor Warning: Incompatible color definition on input line 291.
 
-LaTeX Font Info:    Try loading font information for TS1+lmtt on input line 238
+
+Package xcolor Warning: Incompatible color definition on input line 304.
+
+
+Package xcolor Warning: Incompatible color definition on input line 304.
+
+
+Package xcolor Warning: Incompatible color definition on input line 319.
+
+
+Package xcolor Warning: Incompatible color definition on input line 329.
+
+
+Package xcolor Warning: Incompatible color definition on input line 329.
+
+
+Package xcolor Warning: Incompatible color definition on input line 337.
+
+LaTeX Font Info:    Try loading font information for TS1+lmtt on input line 339
 .
 (/usr/local/texlive/2015/texmf-dist/tex/latex/lm/ts1lmtt.fd
 File: ts1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 
-Package xcolor Warning: Incompatible color definition on input line 244.
+Package xcolor Warning: Incompatible color definition on input line 343.
 
 
-Package xcolor Warning: Incompatible color definition on input line 244.
-
-[2]
-
-Package xcolor Warning: Incompatible color definition on input line 266.
+Package xcolor Warning: Incompatible color definition on input line 343.
 
 
-Package xcolor Warning: Incompatible color definition on input line 281.
+Package xcolor Warning: Incompatible color definition on input line 353.
 
 
-Package xcolor Warning: Incompatible color definition on input line 281.
+Package xcolor Warning: Incompatible color definition on input line 375.
 
 
-Package xcolor Warning: Incompatible color definition on input line 354.
+Package xcolor Warning: Incompatible color definition on input line 375.
 
 
-Package xcolor Warning: Incompatible color definition on input line 358.
-
-
-Package xcolor Warning: Incompatible color definition on input line 358.
+Package xcolor Warning: Incompatible color definition on input line 375.
 
 [3]
 
-Package xcolor Warning: Incompatible color definition on input line 424.
+Package xcolor Warning: Incompatible color definition on input line 375.
 
 
-Package xcolor Warning: Incompatible color definition on input line 428.
+Package xcolor Warning: Incompatible color definition on input line 375.
 
 
-Package xcolor Warning: Incompatible color definition on input line 428.
+Package xcolor Warning: Incompatible color definition on input line 397.
 
 
-<Ratliff_Hunter_HW4_files/figure-latex/unnamed-chunk-8-1.pdf, id=135, 459.7175p
-t x 205.76875pt>
-File: Ratliff_Hunter_HW4_files/figure-latex/unnamed-chunk-8-1.pdf Graphic file 
-(type pdf)
-<use Ratliff_Hunter_HW4_files/figure-latex/unnamed-chunk-8-1.pdf>
-Package pdftex.def Info: Ratliff_Hunter_HW4_files/figure-latex/unnamed-chunk-8-
-1.pdf used on input line 456.
-(pdftex.def)             Requested size: 459.71637pt x 205.76823pt.
-[4 <./Ratliff_Hunter_HW4_files/figure-latex/unnamed-chunk-8-1.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 499.
+Package xcolor Warning: Incompatible color definition on input line 409.
 
 
-Package xcolor Warning: Incompatible color definition on input line 511.
+Package xcolor Warning: Incompatible color definition on input line 409.
 
 
-Package xcolor Warning: Incompatible color definition on input line 511.
+Package xcolor Warning: Incompatible color definition on input line 416.
 
 
-Package xcolor Warning: Incompatible color definition on input line 517.
+Package xcolor Warning: Incompatible color definition on input line 429.
 
 
-Package xcolor Warning: Incompatible color definition on input line 522.
+Package xcolor Warning: Incompatible color definition on input line 429.
 
 
-Package xcolor Warning: Incompatible color definition on input line 522.
+Package xcolor Warning: Incompatible color definition on input line 429.
+
+[4]
+
+Package xcolor Warning: Incompatible color definition on input line 429.
 
 
-Package xcolor Warning: Incompatible color definition on input line 543.
+Package xcolor Warning: Incompatible color definition on input line 429.
 
+
+Package xcolor Warning: Incompatible color definition on input line 444.
+
+
+Package xcolor Warning: Incompatible color definition on input line 463.
+
+
+Package xcolor Warning: Incompatible color definition on input line 463.
+
+
+Package xcolor Warning: Incompatible color definition on input line 479.
+
+
+Package xcolor Warning: Incompatible color definition on input line 484.
+
+
+Package xcolor Warning: Incompatible color definition on input line 484.
+
+
+<Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-11-1.pdf, id=129, 242.9075
+pt x 243.91125pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-11-1.pdf Graphic file
+ (type pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-11-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-11
+-1.pdf used on input line 486.
+(pdftex.def)             Requested size: 242.90689pt x 243.91064pt.
 [5]
 
-Package xcolor Warning: Incompatible color definition on input line 551.
+Package xcolor Warning: Incompatible color definition on input line 496.
 
 
-Package xcolor Warning: Incompatible color definition on input line 551.
+Package xcolor Warning: Incompatible color definition on input line 501.
 
 
-Package xcolor Warning: Incompatible color definition on input line 571.
+Package xcolor Warning: Incompatible color definition on input line 501.
 
 
-Package xcolor Warning: Incompatible color definition on input line 579.
+<Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-12-1.pdf, id=137, 220.825p
+t x 191.71625pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-12-1.pdf Graphic file
+ (type pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-12-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-12
+-1.pdf used on input line 503.
+(pdftex.def)             Requested size: 220.83455pt x 191.72455pt.
+
+Package xcolor Warning: Incompatible color definition on input line 518.
+
+[6 <./Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-11-1.pdf> <./Ratliff_
+Hunter_HW5_files/figure-latex/unnamed-chunk-12-1.pdf>]
+
+Package xcolor Warning: Incompatible color definition on input line 523.
 
 
-Package xcolor Warning: Incompatible color definition on input line 579.
+Package xcolor Warning: Incompatible color definition on input line 523.
 
 
-Package xcolor Warning: Incompatible color definition on input line 589.
+<Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-13-1.pdf, id=159, 295.1025
+pt x 251.94125pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-13-1.pdf Graphic file
+ (type pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-13-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-13
+-1.pdf used on input line 525.
+(pdftex.def)             Requested size: 295.10176pt x 251.94063pt.
+
+Package xcolor Warning: Incompatible color definition on input line 531.
 
 
-Package xcolor Warning: Incompatible color definition on input line 604.
+Package xcolor Warning: Incompatible color definition on input line 536.
 
 
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-[6]
-
-Package xcolor Warning: Incompatible color definition on input line 654.
+Package xcolor Warning: Incompatible color definition on input line 536.
 
 
-Package xcolor Warning: Incompatible color definition on input line 667.
+Package xcolor Warning: Incompatible color definition on input line 570.
 
 
-Package xcolor Warning: Incompatible color definition on input line 667.
+Package xcolor Warning: Incompatible color definition on input line 593.
 
 
-Package xcolor Warning: Incompatible color definition on input line 690.
+Package xcolor Warning: Incompatible color definition on input line 593.
 
 
-Package xcolor Warning: Incompatible color definition on input line 699.
+Package xcolor Warning: Incompatible color definition on input line 593.
+
+[7 <./Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-13-1.pdf>]
+
+Package xcolor Warning: Incompatible color definition on input line 593.
 
 
-Package xcolor Warning: Incompatible color definition on input line 699.
+Package xcolor Warning: Incompatible color definition on input line 593.
 
 
-Package xcolor Warning: Incompatible color definition on input line 717.
+<Ratliff_Hunter_HW5_files/figure-latex/RandomQQplot-1.pdf, id=173, 446.66875pt 
+x 356.33125pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/RandomQQplot-1.pdf Graphic file (ty
+pe pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/RandomQQplot-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/RandomQQplot-1.p
+df used on input line 595.
+(pdftex.def)             Requested size: 446.67445pt x 356.3358pt.
+
+<Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-15-1.pdf, id=174, 462.7287
+4pt x 207.77625pt>
+File: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-15-1.pdf Graphic file
+ (type pdf)
+<use Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-15-1.pdf>
+Package pdftex.def Info: Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-15
+-1.pdf used on input line 601.
+(pdftex.def)             Requested size: 462.73466pt x 207.77888pt.
+[8 <./Ratliff_Hunter_HW5_files/figure-latex/RandomQQplot-1.pdf>]
+
+Package xcolor Warning: Incompatible color definition on input line 608.
 
 
-Package xcolor Warning: Incompatible color definition on input line 725.
+Package xcolor Warning: Incompatible color definition on input line 615.
 
 
-Package xcolor Warning: Incompatible color definition on input line 725.
+Package xcolor Warning: Incompatible color definition on input line 615.
 
-[7]
-
-Package xcolor Warning: Incompatible color definition on input line 777.
-
-
-Package xcolor Warning: Incompatible color definition on input line 782.
-
-
-Package xcolor Warning: Incompatible color definition on input line 782.
-
-
-Package xcolor Warning: Incompatible color definition on input line 817.
-
-
-Package xcolor Warning: Incompatible color definition on input line 822.
-
-
-Package xcolor Warning: Incompatible color definition on input line 822.
-
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 833.
-[8]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 833.
-(./Ratliff_Hunter_HW4.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 833.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 833.
-Package rerunfilecheck Info: File `Ratliff_Hunter_HW4.out' has not changed.
-(rerunfilecheck)             Checksum: 778139B31CEACC366564E75CCA9C6D96;2606.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 833.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 762.
+[9 <./Ratliff_Hunter_HW5_files/figure-latex/unnamed-chunk-15-1.pdf>]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 762.
+(./Ratliff_Hunter_HW5.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 762.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 762.
+Package rerunfilecheck Info: File `Ratliff_Hunter_HW5.out' has not changed.
+(rerunfilecheck)             Checksum: 51BF3A5C8770706DD944A81FC02F7317;2424.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 762.
  ) 
 Here is how much of TeX's memory you used:
- 14654 strings out of 493089
- 211458 string characters out of 6134842
- 330988 words of memory out of 5000000
- 17760 multiletter control sequences out of 15000+600000
- 67605 words of font info for 87 fonts, out of 8000000 for 9000
+ 14644 strings out of 493089
+ 212484 string characters out of 6134842
+ 334779 words of memory out of 5000000
+ 17768 multiletter control sequences out of 15000+600000
+ 67377 words of font info for 86 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 34i,8n,35p,604b,464s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/lo
-cal/texlive/2015/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/usr/local/texlive/20
-15/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/local/texlive/2015/texmf-d
-ist/fonts/enc/dvips/lm/lm-mathex.enc}{/usr/local/texlive/2015/texmf-dist/fonts/
-enc/dvips/lm/lm-ec.enc}{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/lm/l
-m-ts1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmbx10.pfb>
-</usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></usr/loca
-l/texlive/2015/texmf-dist/fonts/type1/public/lm/lmex10.pfb></usr/local/texlive/
-2015/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/local/texlive/2015/texmf
--dist/fonts/type1/public/lm/lmmi7.pfb></usr/local/texlive/2015/texmf-dist/fonts
-/type1/public/lm/lmr10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/publ
-ic/lm/lmr17.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmr5.
-pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmr6.pfb></usr/lo
-cal/texlive/2015/texmf-dist/fonts/type1/public/lm/lmr7.pfb></usr/local/texlive/
-2015/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/local/texlive/2015/texmf-d
-ist/fonts/type1/public/lm/lmri10.pfb></usr/local/texlive/2015/texmf-dist/fonts/
-type1/public/lm/lmri12.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/publ
-ic/lm/lmsy10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmsy
-7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></us
-r/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/local/te
-xlive/2015/texmf-dist/fonts/type1/public/lm/lmtt8.pfb></usr/local/texlive/2015/
-texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Ratliff_Hunter_HW4.pdf (8 pages, 373474 bytes).
+ 34i,8n,35p,444b,428s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/usr/local
+/texlive/2015/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/usr/local/texlive/2015/
+texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/local/texlive/2015/texmf-dist
+/fonts/enc/dvips/lm/lm-rm.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/p
+ublic/lm/lmbx10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/l
+mbx12.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmmi10.pfb>
+</usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmmi7.pfb></usr/local
+/texlive/2015/texmf-dist/fonts/type1/public/lm/lmr10.pfb></usr/local/texlive/20
+15/texmf-dist/fonts/type1/public/lm/lmr17.pfb></usr/local/texlive/2015/texmf-di
+st/fonts/type1/public/lm/lmr6.pfb></usr/local/texlive/2015/texmf-dist/fonts/typ
+e1/public/lm/lmr7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm
+/lmr8.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmri10.pfb>
+</usr/local/texlive/2015/texmf-dist/fonts/type1/public/lm/lmri12.pfb></usr/loca
+l/texlive/2015/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/local/texlive/
+2015/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/local/texlive/2015/texmf
+-dist/fonts/type1/public/lm/lmtti10.pfb>
+Output written on Ratliff_Hunter_HW5.pdf (9 pages, 360442 bytes).
 PDF statistics:
- 282 PDF objects out of 1000 (max. 8388607)
- 247 compressed objects within 3 object streams
- 61 named destinations out of 1000 (max. 500000)
- 14478 words of extra memory for PDF output out of 17280 (max. 10000000)
+ 267 PDF objects out of 1000 (max. 8388607)
+ 221 compressed objects within 3 object streams
+ 44 named destinations out of 1000 (max. 500000)
+ 14479 words of extra memory for PDF output out of 17280 (max. 10000000)
 

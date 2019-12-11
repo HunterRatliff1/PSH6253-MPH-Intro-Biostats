@@ -1,0 +1,323 @@
+---
+title: 'Homework #5'
+author: "Hunter Ratliff"
+date: "12/6/2019"
+output:
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  word_document: 
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=T, warning=F, message=F, collapse = T)
+library(pander)
+library(broom)
+library(car)
+library(tidyverse)
+library(ggthemes)
+library(scales)
+library(gridExtra)
+options(tinytex.verbose = TRUE)
+
+### LATEX HELP ###
+# \definecolor{bgblue}{RGB}{217, 237, 247}
+# \textcolor{red}{easily} \colorbox{bgblue}{this text}
+# \colorbox{bgblue}{asd}
+# \noindent
+# {\color{bgblue} \rule{\linewidth}{1mm} }
+
+# see http://joshua.smcvt.edu/latex2e/_005cfbox-_0026-_005cframebox.html
+
+question <- function(text, color = "purple") {
+  kableExtra::text_spec(text, color = color)
+}
+
+q_stem <- function(text, color = "red") {
+  kableExtra::text_spec(text, color = color)
+}
+```
+
+`r q_stem("The Update to the Task Force Report on Blood Pressure Control in Children reported the observed 90th percentile of SBP in single years of age from 1 to 17 based on prior studies. The data for boys of average height are given in Table 11.18.", color="gray")` (modified based on page 540)
+
+```{r}
+# TABLE 11.18: 
+# 90th percentile of SBP in boys ages 1-17 of average height
+df <- tibble(
+  age = 1:17,
+  SBP = c(99,  102, 105, 107, 108, 110, 111, 112, 114, 
+          115, 117, 120, 122, 125, 127, 130, 132)
+)
+```
+
+# Fit a regression
+
+`r q_stem("1. Fit a regression line relating age to SBP with the data in Table 11.18;  based on the output, answer questions 2-9 (include output and R command)")`
+
+```{r}
+mod <- lm(SBP ~ age, data=df)
+mod %>%
+  summary() %>% 
+  pander()
+```
+
+
+```{r, fig.width=3.5, fig.height=3.5, fig.align='center', echo=F}
+mod %>%
+  broom::augment() %>%
+  ggplot(aes(x=age, y=SBP)) +
+  geom_linerange(color="red",
+    aes(ymax=ifelse(SBP>.fitted, SBP, .fitted), 
+        ymin=ifelse(SBP<.fitted, SBP, .fitted))) +
+  geom_line(aes(y=.fitted), color="blue") +
+  geom_point() +
+  labs(title="SBP vs Age w/ fitted model", subtitle = "Red lines = residuals")
+```
+
+
+
+# What is the estimated regression model?
+
+`r q_stem("2. What is the estimated regression model? Is the intercept meaningful, why or why not? ")`
+
+$$SBP = 97.79 \ +\  1.919(age) + \epsilon$$
+Stated otherwise our $\alpha$=97.79 and $\beta$=1.919 for the equation $\hat y_i = \alpha + \beta x_i + \epsilon_i$.
+
+Concerning the intercept, it might be practical to use it as an approximation for the SBP of a neonate (e.g. `age = 1/365`), but strictly speaking you can't really have an age of zero^[Unless you consider the intercept to be predicting blood pressure the moment before birth, which I don't think it was intended to do], so the **intercept itself isn't meaningful** in isolation. It does, however, help to anchor the regression line in the right place, so it's helpful, just not meaningful.
+
+
+# Standard Error
+
+`r q_stem("3. What is the standard error of the model?")`
+
+The residual standard error is **1.219** on 15 degrees of freedom. This value can be found by running `summary(mod)` or calculating it by hand.    
+     
+
+```{r}
+res <- mod$residuals
+k   <- length(mod$coefficients) - 1
+n   <- length(res)
+SSE <- sum(res^2)
+
+#Residual Standard error
+sqrt(
+  SSE / (n-(1+k))
+)
+
+
+```
+
+# R-squared
+
+`r q_stem("4. What is the value for R2 and what does it mean? ")`
+
+The $R^2$ represents the percent of the total variance explained by the model with $R^2=1$ meaning the  independent variable(s) explain all of the dependent variable's variance, while an $R^2 = 0$ means the model explains none of the variance.
+
+In the case of our regression, the **$R^2$ = `r round(cor(df$age, df$SBP)^2,4)`**, meaning that the model we fitted explains a large amount of the variance.
+
+```{r}
+# R-squared
+cor(df$age, df$SBP)^2
+
+# alt method
+summary(mod)$r.squared
+```
+
+
+# Correlation(SBP ~ Age)
+
+`r q_stem("5. What is the correlation between blood pressure and age?")`
+
+```{r}
+# Use pearson, as they're normally distributed
+cor(df$age, df$SBP, method = "pearson")
+```
+
+The correlation between blood pressure and age is **r = `r cor(df$age, df$SBP, method = "pearson")`**
+
+
+# Is there a significant linear relationship. Use t-test & F test 
+
+`r q_stem("6. Is there a significant linear relationship between age and mean blood pressure? Or, does age have an effect on mean blood pressure? Using both F test and t-test to answer the question.")`
+
+```{r}
+mod %>% summary()
+```
+
+
+To begin, we'll look at the F-Statistic to see if our overall model has signifigance. We found a F-statistic of `r round(summary(mod)[["fstatistic"]][["value"]])` (p-value: **3.49e-15**), meaning that at least one of our coefficients (the intecept &/or our $\beta$) are non-zero. Looking at the p-value of the t-test for our coefficient age (p-value: **3.49e-15**, _same as for the F-test_) we also see that it's signifigant, meaning that age is a signifigant predictor of SBP.
+
+All this is to say that there is **indeed a significant linear relationship** between age and mean blood pressure.
+
+# Interpret the slope
+
+`r q_stem("7. Interpret the slope. Estimate with 95% confidence the effect of age on mean blood pressure.")`
+
+With a $\beta$=`r round(coef(mod)[[2]],4)`, (95% CI: `r round(confint(mod, "age")[[1]],2)`; `r round(confint(mod, "age")[[2]],2)`) we interpret that for every increase in age (by 1 year), the mean SBP of boys in our target population will increase by `r round(coef(mod)[[2]],2)` mmHg.
+
+```{r}
+coef(mod)
+
+# 95% CI
+confint(mod)
+```
+
+
+# Estimate effect of 5 years
+
+`r q_stem("8. Estimate with 95% confidence the effect that 5 years has on mean blood pressure.")`
+
+```{r}
+beta <- coef(mod)[[2]]
+ll <- confint(mod, "age")[[1]]
+ul <- confint(mod, "age")[[2]]
+
+beta * 5
+ll * 5
+ul * 5
+```
+
+The estimated effect of an increase of five years of age on SBP is an average increase of SBP by **`r round(beta*5,2)` mmHg** (95% CI: `r round(ll*5,2)`; `r round(ul*5,2)`)
+
+# Predicted SBP of 13 year old
+
+`r q_stem("9. What is the predicted blood pressure for an average 13-year-old boy as estimated from the regression line?")`
+
+Using the formula we find the estimated SBP of the average 13-year old boy to be estimated to be $SBP = 97.79 \ +\  1.919(13) =$ **122.7353**
+
+```{r}
+b0  <- mod$coefficients[[1]]
+b1  <- mod$coefficients[[2]]
+age <- 13
+
+y <- b0 + b1*age
+y  # result using equation
+
+# using predict()
+predict(mod, data.frame(age=13))
+
+# actual SBP for 13 year olds
+df$SBP[df$age==13]
+```
+
+
+
+# Any violations of assumptions?
+
+`r q_stem("10. Are there any violation on the statistics assumptions - homogeneous variance, linearity, normality, and outliers/influential observations in this model?")`
+
+I discuss each of these assumptions below, but overall I **don't think there are any violations** of the assumptions. The data might not be perfectly linear (_more on this below_), but globally I don't think that this is that large of a problem.
+
+## Homoscedasticity
+
+```{r, fig.width=3.5, fig.height=3.5, fig.align='center'}
+library(ggfortify)  # for the autoplot function 
+autoplot(mod)@plots[[1]]
+```
+
+While this plot doesn't look like we have a problem with the variance, it does look like we might have some non-linearity going on. This will be addressed next, but I'd say that it **meets the assumption** of homoscedasticity.
+
+## Linearity
+
+```{r, fig.width=3.5, fig.height=3.5, fig.align='center'}
+library(car)
+crPlots(mod)
+```
+
+The residual vs fitted above showed a possible non-linear relationship, and the partial residual plot above shows the same pattern. Based on this plot, however, it looks like a pretty linear relationship all things considered. I'm certianly not inclined to transform the data in any way. 
+
+So for now I'll say that it's **not perfectly linear**, but I **don't think** that it's _enough of a reason_ to throw our whole model out.
+
+## Normality
+
+```{r, fig.width=4.5, fig.height=4.5, fig.align='center'}
+# QQ plot
+qqPlot(mod)
+```
+
+```{r}
+# Shapiro-Wilk
+shapiro.test(mod$residuals) %>% pander()
+```
+
+
+The QQ-plot looks normal, so I'd say that it **meets the assumption** of normality of residuals. Additionally, I can't easily pick out the actual QQ plot from some randomly generated ones (that were generated based on normal distributions).
+
+```{r RandomQQplot, fig.height=5.5}
+randomQQ <- function(res, showAns=F, nrow=3, ncol=3) {
+  # Function that, provided residuals, generates 8 random QQ plots
+  # and hides the actual QQ plot of our residuals. 
+  spot <- sample(c(1:(nrow*ncol)), size=1)
+  if(showAns) print(paste0("Actual data on plot #", spot))
+  
+  plots <- lapply(1:(nrow*ncol), function(.x) {
+    if(.x!=spot) {
+      data <- rnorm(length(res), sd=sd(res))
+    } else(data <- res)
+    ggplot(tibble(res=data), aes(sample=res)) + 
+      stat_qq() + geom_qq_line() +
+      labs(x="", y="", title=paste0("Plot #", .x))
+  })
+  
+  gridExtra::marrangeGrob(plots, nrow=nrow, ncol=ncol, top="")
+  
+}
+randomQQ(mod$residuals, showAns = T)
+```
+
+```{r BaseRandomQQ, include=F}
+randomQQ <- function(res, showAns=F, nrow=3) {
+  # Function that, provided residuals, generates 8 random QQ plots
+  # and hides the actual QQ plot of our residuals. 
+  randomSpot <- sample(c(1:nrow^2)) == 1
+  par(mfrow=c(nrow,nrow))
+  i <- 1
+  
+  while (i<=nrow^2) {
+    if(randomSpot[i]) {
+      qqnorm(res, main="Normal QQ Plot"); qqline(res)
+      if(showAns) print(i)
+    } else({
+      psudo_res <- rnorm(length(res), sd=sd(res))
+      qqnorm(psudo_res); qqline(psudo_res)
+    })
+    i <- i + 1
+  }
+}
+```
+
+
+## Outliers/influential points
+
+```{r, fig.height=3, echo=F}
+grid.arrange(
+  autoplot(mod, 4)@plots[[1]],
+  autoplot(mod)@plots[[4]], 
+  ncol=2
+)
+```
+
+We see that R has tagged the ages 3, 16, 17 as potential influential points. We see that these Cook's distances are low enough (certianly lower than 1) that we **don't need to worry about influential points**. 
+
+```{r}
+augment(mod) %>% 
+  arrange(desc(.cooksd)) %>% 
+  top_n(5) %>% 
+  pander(caption="Top 5 observations by Cook's distance")
+```
+
+
+
+```{r, include=F}
+# Global validation
+x <- mod %>% gvlma::gvlma()
+
+```
+
+
+
+
