@@ -2,230 +2,382 @@
 title: "Some models"
 author: "Hunter Ratliff"
 date: "11/17/2019"
-output: html_document
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    df_print: kable
+    highlight: tango
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo=F, warning=F, message=F, collapse = T)
 library(pander)
 library(scales)
-library(randomForest)
-library(survey)
-require(caTools)
-library(caret)
+library(ggthemes)
+# library(randomForest)
+# library(survey) # dsgn <- svydesign(ids=~CASEID, strata = ~strata, weights=~wgt, data=data)
+# require(caTools)
+# library(caret)
 library(leaps)
 library(MASS)
+library(kableExtra)
 library(tidyverse)
 # library(Epi)        # Epi::clogistic for conditional logit
 # library(survival)   # survival::clogit()
 ### survival allows for weights
-
-
-
-preg <- read_rds("data/preg.RDS")
-resp <- read_rds("data/resp.RDS")
- 
 ```
 
-## Outcome variables & predictors
+# Set reference levels
 
-```{r}
-data <-left_join(preg, resp) %>%
-  # must be >= 20 years old and have live birth
-  filter(AGECON>=20, OUTCOME=="LIVE BIRTH") %>%
-  
-  
-  # OUTCOMES
+The reference levels can be a little confusing for the regression, so I'll explain it here.
+
+For predictors (i.e. _independent variables_), the reference is exactly what it sound like. So if I set the reference level for `race` to be white, the estimate for coefficients race`XYZ` is in reference to white subjects, as shown below:
+
+```{r, eval=FALSE, echo=T}
+BIRTH %>%
   mutate(
-    # Know if pregnant by 6 weeks
-    KnowPreg = factor(if_else(KnowPreg<=6, "Yes", "No")), 
-    
-    # Got prenatal care in first trimester
-    gotPNcare = factor(if_else(BGNPRENA<13, "Yes", "No")),
-    
-    # Premature delivery
-    PreMe = factor(if_else(GA<37, "Premature", "Term"))
-  ) %>% 
-  
-  # PREDICTORS
+    race = relevel(race, "White")
+  )
+
+# Coefficients:
+#                Estimate Std. Error z value Pr(>|z|)    
+# ...              ...        ...       ...   ...
+# raceHispanic  3.476e-02     ...       ...   ...
+```
+
+For our our _outcomes_ it's the **second** level of the factor that becomes our outcome (or "success"). So if the reference is set to having a normal birthweight, then the odds ratio is representing the odds ratio of **being born low birth weight**.
+
+
+```{r readData}
+# Read in data
+BIRTH <- read_rds("data/BIRTH.RDS") %>%
   mutate(
-    Trying = cut(TRYSCALE, breaks = c(0,5,10), labels = c("No",  "Yes")),
-    Wanted = cut(WANTSCAL, breaks = c(0,2,7,10), labels = c("No", "Maybe", "Yes"))
-  ) %>%
-  
-  # REORDER
-  select(CASEID, KnowPreg, gotPNcare, PreMe, LBW=LBW1, 
-         AGECON, PMARPREG, EDUCAT, HISPRACE, BMI, POVERTY,
-         USUALCAR, 
-         TRYSCALE, WANTSCAL, Trying, Wanted, GA,
-         wgt=WGT2015_2017, SECU, strata=SEST
-         # everything()
-  ) %>%
-  na.omit()
+    LBW = factor(ifelse(LBW, "Low", "Normal")),
+    Wanted = factor(ifelse(Wanted, "Yes", "No")),
+    
+    ### --------------- Set default levels ---------------
+    ## For OUTCOME variables - see help(binomial)
+    # For using factors in binomial: 'success' is interpreted as the factor 
+    # NOT having the first level (success=second level)
+    LBW   = relevel(LBW,   "Normal"),
+    PreMe = relevel(PreMe, "Term"),
+    
+    ## For PREDICTORS, the first level is the ref
+    Wanted = relevel(Wanted, "Yes"),
+    race   = relevel(race,   "White")
+  )
 
-qplot(x=WANTSCAL, fill=Wanted, data=data)
-qplot(x=TRYSCALE, fill=Trying, data=data)
-
-
-data %>%
-  glimpse()
+PN    <- read_rds("data/PN.RDS") %>%
+  mutate(
+    LBW = factor(ifelse(LBW, "Low", "Normal")),
+    Wanted = factor(ifelse(Wanted, "Yes", "No")),
+    
+    ### --------------- Set default levels ---------------
+    ## For OUTCOME variables - see help(binomial)
+    # For using factors in binomial: 'success' is interpreted as the factor 
+    # NOT having the first level (success=second level)
+    LBW   = relevel(LBW,   "Normal"),
+    PreMe = relevel(PreMe, "Term"),
+    
+    ## For PREDICTORS, the first level is the ref
+    Wanted = relevel(Wanted, "Yes"),
+    race   = relevel(race,   "White")
+  )
 ```
 
-# Survey design + weighted glm
+
+Below are the reference levels for the `BIRTH` dataset
 
 ```{r}
-dsgn <- svydesign(ids=~CASEID, strata = ~strata, weights=~wgt, data=data)
-
-# use quasibinomial to suppress warning
-"LBW~Trying+Wanted+HISPRACE+POVERTY+EDUCAT+AGECON+GA" %>%
-  as.formula() %>%
-  glm(., data=data, family=binomial(link = "logit")) %>%
-  # survey::svyglm(., dsgn, family=binomial) %>%
-  # .$AIC
-  summary()
+BIRTH %>% select_if(is.factor) %>% select(-eduCat) %>% str()
 ```
 
-
-# Unweighted models
-
-```{r model1}
-df <- preg %>%
-  filter(OUTCOME=="LIVE BIRTH") %>%
-  
-  # Make wantedness bianary
-  mutate(Wanted = case_when(WANTRESP=="RIGHT TIME"               ~ TRUE,
-                            WANTRESP=="DON'T KNOW, NOT SURE"     ~ NA,
-                            WANTRESP=="DIDN'T CARE, INDIFFERENT" ~ NA,
-                            TRUE ~ FALSE
-  )) %>% left_join(resp)
-
-
-
-# Linear model
-lm(BirthWt ~ GA + POVERTY + AGECON + Wanted + HISPRACE + EDUCAT + BMI, 
-   data=df, subset = (OUTCOME=="LIVE BIRTH")) %>%
-  step() %>%
-  # add1(scope = .~.+ .^2, test="Chisq")
-  summary()
-
-
-# Logit regression
-df.glm <- df %>%
-  ###  !!!   Define variables here   !!!  ###
-  dplyr::select(LBW1, GA, POVERTY, AGECON, Wanted, HISPRACE, EDUCAT, BMI) %>%
-  na.omit()
-
-
-# Simple run of glm
-glm(LBW1 ~ .,
-    data=df.glm, family = binomial(link = "logit")) %>%
-  MASS::stepAIC(trace = FALSE) %>%
-  summary()
-
-glm(LBW1 ~ .,
-    data=df.glm, family = binomial(link = "logit")) %>%
-  MASS::stepAIC(~ .^2, trace = FALSE) %>%
-  .$anova
- 
-
-
-
-library(randomForest)
-require(caTools)
-# Random forest
-rf <- randomForest(
-  LBW1 ~ .,
-  na.action=na.omit,
-  data=df.glm
-)
-rf
-round(importance(rf), 2)
-varImpPlot(rf)
-getTree(rf, k = 1, labelVar = T)
-plot(rf)
-rm(rf)
-```
-
-
-# Model selection with step()
+Below are the reference levels for the `PN` dataset
 
 ```{r}
-subUse <- preg %>%
-  filter(CASEID %in% filter(resp, !is.na(PRENAT12))$CASEID) %>%
-  group_by(CASEID) %>%
-  filter(PREGORDR==max(PREGORDR)) %>%
-  right_join(
-    filter(resp, !is.na(PRENAT12))
+PN %>% select_if(is.factor) %>% select(-eduCat) %>% str()
+```
+
+
+# Odds ratio based on 2x2 tables
+
+Odds ratio of being LBW, given exposure to unwantedness
+
+```{r OR_example, echo=T, collapse=T}
+tab <- t(table(BIRTH$LBW, BIRTH$Wanted)) 
+tab
+tab %>% mosaic::orrr()  %>% .^-1
+# Odds ratio of being LBW, given exposure to unwantedness
+# Odds LBW in unwanted: 222/1834 = .12105
+# Odds LBW in wanted: 236/2528 = .09335
+(222/1834)/(236/2528) # 1.296638
+glm(LBW ~ Wanted, data=BIRTH, family=binomial) %>% coef() %>% exp()
+# glm(LBW ~ Wanted, data=BIRTH, family=binomial) %>% 
+#   predict(newdata = tibble(PreMe=as.factor("Term")), type="response")
+```
+
+So we see that we should be interpreting the odds ratio of the regression as follows
+
+> the odds of [**second level of outcome variable**], given exposure to [**second level of predictor**]
+
+In this case, the odds ratio shows us the odds of *being __low__ birth weight*, with a reference level of *wanted pregnancy* (i.e. OR of being LBW given unwanted pregnancy)
+
+# Low Birth Weight
+
+First, a refresher on the number of subjects who were low birth weight
+
+```{r}
+table(BIRTH$LBW) %>% 
+  pander(caption="Counts of subjects with normal and low birth weights")
+```
+
+This model predicts being born as **low birth weight** with the formula below
+
+```{r}
+mod.LBW <- glm(LBW ~ GA + BMI + age + income + race + YrEdu + Wanted, 
+    data=BIRTH, family=binomial(link = "logit"))
+pander(mod.LBW)
+
+# Anova(mod.LBW, type = 3)  # type 3 anova
+```
+
+Note that the estimate above is the **Log-odds**. The table below transforms the log-odds into odds ratios
+
+```{r}
+# Tidy version of summary
+broom::tidy(mod.LBW) %>%
+  select(term, estimate, p.value) %>%
+  mutate(Odds.Ratio = exp(estimate)) %>%
+  select(-estimate) %>%
+  cbind(exp(broom::confint_tidy(mod.LBW))) %>%
+  mutate_if(is.numeric, round, 4) %>%
+  filter(term!="(Intercept)") %>%
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+# Also can do this --> exp(cbind(OR = coef(mod.LBW), confint(mod.LBW))) %>% round(3)    
+
+```
+
+## Graphics
+
+```{r prediction1}
+### Predictions of propabilities ###
+df <- tidyr::expand(BIRTH, Wanted, race) %>%
+  mutate(
+    GA = mean(BIRTH$GA),
+    BMI = mean(BIRTH$BMI),
+    age = mean(BIRTH$age),
+    # income = mean(BIRTH$income),
+    YrEdu  = mean(BIRTH$YrEdu)
   ) %>%
-  ungroup() %>% dplyr::select(-CASEID) %>%
-  
-  filter(OUTCOME=="LIVE BIRTH") %>%
-  
-  # Make wantedness bianary
-  mutate(Wanted = case_when(WANTRESP=="RIGHT TIME"               ~ TRUE,
-                            WANTRESP=="DON'T KNOW, NOT SURE"     ~ NA,
-                            WANTRESP=="DIDN'T CARE, INDIFFERENT" ~ NA,
-                            TRUE ~ FALSE
-  )) %>%
-  dplyr::select(LBW1, GA, POVERTY, AGECON, Wanted, HISPRACE, EDUCAT, BMI,
-                SMOKE12:INJECT12, -BINGE12) %>%
-  mutate(SMOKE12 = replace_na(SMOKE12, "None")) %>%
-  mutate(SMOKE=SMOKE12) %>%
-  
-  # Simplify these to binaries
-  mutate_at(vars(contains("12")), function(x) ifelse(x=="Never"|x=="None", F, T)) %>%
-  mutate(SubUse = ifelse(POT12 | COC12 | CRACK12 | CRYSTMTH12 | INJECT12, T, F)) %>%
-  
-  na.omit() %>%
-  dplyr::select(LBW1:DRINK12, SubUse, SMOKE)
+  expand_grid(
+    income=seq(0, 500, by=50)
+  ) 
 
-# subUse %>%
-#   
-#   count(POT12)
+# predict(object = mod.LBW, newdata = df, type="response", se.fit = T)
+df$fit <- predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$fit
+df$ul  <- df$fit + predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$se.fit
+df$ll  <- df$fit - predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$se.fit
 
-
-###### Random forest
-library(randomForest)
-require(caTools)
-rf <- randomForest(
-  LBW1 ~ .,
-  na.action=na.omit,
-  data=subUse
-)
-rf
-round(importance(rf), 2)
-varImpPlot(rf)
-getTree(rf, k = 1, labelVar = T)
-rm(rf)
-
-
-  
-# GLM
-glm(LBW1 ~ GA + AGECON + POVERTY + BMI + SMOKE12 + EDUCAT + HISPRACE + SubUse,
-    data=subUse, family = binomial(link = "logit")) %>%
-  # MASS::stepAIC(, trace = FALSE) %>%
-  MASS::stepAIC(~ .^2, trace = FALSE) %>%
-  # plot()
-  summary()
-  # .$anova
+df %>% ggplot(aes(x=income, y=fit, group=race)) +
+  geom_ribbon(aes(ymax=ul, ymin=ll), alpha=0.1) +
+  geom_line(aes(color=race)) +
+  facet_grid(.~Wanted) +
+  scale_color_colorblind() +
+  theme_bw() +
+  labs(x="Income as % federal poverty line", y="Pr(Having LBW baby)",
+       title="Predicted Pr(LBW), by income & race",
+       subtitle = "Split by Wantedness (Yes/No)")
 ```
 
+```{r prediction2}
+### Predictions of propabilities ###
+df <- tidyr::expand(BIRTH, race) %>%
+  mutate(
+    # GA = mean(BIRTH$GA),
+    BMI = mean(BIRTH$BMI),
+    age = mean(BIRTH$age),
+    income = mean(BIRTH$income),
+    Wanted = as.factor("Yes"),
+    YrEdu  = mean(BIRTH$YrEdu)
+  ) %>%
+  expand_grid(
+    GA=seq(20, 45, by=1)
+  ) 
 
-# Attempting conditional logit
+# predict(object = mod.LBW, newdata = df, type="response", se.fit = T)
+df$fit <- predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$fit
+df$ul  <- df$fit + predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$se.fit
+df$ll  <- df$fit - predict(object = mod.LBW, newdata = df, type="response", se.fit = T)$se.fit
+
+df %>% ggplot(aes(x=GA, y=fit, group=race)) +
+  geom_ribbon(aes(ymax=ul, ymin=ll), alpha=0.1) +
+  geom_line(aes(color=race)) +
+  # facet_grid(.~Wanted) +
+  scale_color_colorblind() +
+  theme_bw() +
+  labs(x="Gestational age (weeks)", y="Pr(Having LBW baby)",
+       title="Predicted Pr(LBW), by gestational age & race")
+```
+
+## Validation
+
+VIF 
 
 ```{r}
-library(survival)
-
-
-data %>%
-  # must be >= 20 years old and have live birth
-  # filter(AGECON>=20, OUTCOME=="LIVE BIRTH") %>%
-  
-  mutate(Wanted = ifelse(WANTRESP=="RIGHT TIME", "Wanted", "Unwanted")) %>%
-  group_by(Wanted, CASEID) %>%
-  summarise(n=n()) %>%
-  spread(Wanted, n) %>%
-  
-  na.omit()
+car::vif(mod.LBW)
 ```
+
+Confusion matrix using test & training data
+
+```{r}
+train <- BIRTH %>% group_by(LBW) %>% sample_frac(.8, replace=T)
+test <- anti_join(BIRTH, train)
+# BIRTH %>% group_by(LBW) %>% sample_n(.8*nrow(BIRTH), replace=T) # gives equal numbers
+
+
+mod <- glm(mod.LBW[["formula"]], data=train, family=binomial(link = "logit"))
+predicted <- predict(mod, test, type="response")
+
+library(InformationValue)
+# find optimal cutoff
+cutoff <- optimalCutoff(ifelse(test$LBW=="Low", 1, 0), predicted)
+
+# find error rate
+misClassError(ifelse(test$LBW=="Low", 1, 0), predicted,
+              threshold = cutoff)
+
+# plot ROC
+plotROC(ifelse(test$LBW=="Low", 1, 0), predicted)
+
+Concordance(ifelse(test$LBW=="Low", 1, 0), predicted)
+
+
+# Confusion matrix
+caret::confusionMatrix(positive="Low",
+  as.factor(ifelse(predicted>cutoff, "Low", "Normal")),
+  reference=test$LBW)
+
+# clean up 
+rm(train, test, mod, predicted, cutoff)
+```
+
+
+
+# Premature birth
+
+Again, a refresher on the number of subjects who were born before 37 weeks
+
+```{r}
+table(BIRTH$PreMe) %>% 
+  pander(caption="Counts of subjects born at term and prematurely")
+```
+
+This model predicts **being born prematurely** with the formula below
+
+```{r}
+mod.PreMe <- glm(PreMe ~  BMI + age + income + race + YrEdu + Wanted, 
+    data=BIRTH, family=binomial(link = "logit"))
+pander(mod.PreMe)
+```
+
+Again, table with the transformed odds ratios
+
+```{r}
+# Tidy version of summary
+broom::tidy(mod.PreMe) %>%
+  select(term, estimate, p.value) %>%
+  mutate(Odds.Ratio = exp(estimate)) %>%
+  select(-estimate) %>%
+  cbind(exp(broom::confint_tidy(mod.PreMe))) %>%
+  mutate_if(is.numeric, round, 4) %>%
+  filter(term!="(Intercept)") %>%
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+
+
+# Knew pregnant
+
+Counts of who knew they were pregnant
+
+```{r}
+table(PN$KnowPreg) %>% 
+  pander(caption="Counts of if mother knew pregnant or not by XXX weeks")
+```
+
+This model predicts ...
+
+```{r}
+mod.KnowPreg <- glm(KnowPreg~PregNum + age + income + race + YrEdu + PregNum + Wanted, 
+    data=PN, family=binomial)
+pander(mod.KnowPreg)
+```
+
+Odds ratios
+
+```{r}
+# Tidy version of summary
+broom::tidy(mod.KnowPreg) %>%
+  select(term, estimate, p.value) %>%
+  mutate(Odds.Ratio = exp(estimate)) %>%
+  select(-estimate) %>%
+  cbind(exp(broom::confint_tidy(mod.KnowPreg))) %>%
+  mutate_if(is.numeric, round, 4) %>%
+  filter(term!="(Intercept)") %>%
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+# Got prenatal care
+
+Counts of who got prenatal care in the first trimester
+
+```{r}
+table(PN$gotPNcare) %>% 
+  pander(caption="Counts of if mother got prenatal care in the first trimester")
+```
+
+```{r}
+mod.gotPNcare <- glm(gotPNcare~ KnowPreg + age + income + race + YrEdu + PregNum + Wanted, 
+    data=PN, family=binomial)
+pander(mod.gotPNcare)
+```
+
+Odds ratios
+
+```{r}
+# Tidy version of summary
+broom::tidy(mod.gotPNcare) %>%
+  select(term, estimate, p.value) %>%
+  mutate(Odds.Ratio = exp(estimate)) %>%
+  select(-estimate) %>%
+  cbind(exp(broom::confint_tidy(mod.gotPNcare))) %>%
+  mutate_if(is.numeric, round, 4) %>%
+  filter(term!="(Intercept)") %>%
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+
 

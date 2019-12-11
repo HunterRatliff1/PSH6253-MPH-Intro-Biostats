@@ -1,0 +1,432 @@
+---
+title: "NSFG EDA"
+author: "Hunter Ratliff"
+date: "12/4/2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(scales)
+library(ggthemes)
+
+require(caTools)
+library(caret)
+library(leaps)
+library(MASS)
+library(DataExplorer)
+library(summarytools)
+library(dlookr)
+library(tidyverse)
+
+BIRTH <- read_rds("data/BIRTH.RDS")
+PN    <- read_rds("data/PN.RDS")
+data0    <- read_rds("data/data0.RDS")
+```
+
+# Definitions & Structure
+
+First, a short overview of the variables we have. We have two datasets, `BIRTH` and `PN` (more on this later), and the breakdown of the variables between the two datasets are below:
+
+- **CASEID** (both): Case identification number (PRIMARY KEY)
+- **LBW** (BIRTH only, _outcome_): Was the first baby of this pregnancy of low birth weight? [codebook](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088348?studyNumber=10001)
+- **PreMe** (BIRTH only, _outcome_): Was the GA < 37 weeks?
+- **GA** (BIRTH only): Gestational age in weeks [wksgest](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088200?studyNumber=10001)
+- **BMI** (BIRTH only): Body Mass Index [BMI](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1084118?studyNumber=10001)
+- **age** (both): Age at time of conception [AGECON](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088339?studyNumber=10001)
+- **income** (both): Expressed as percent of poverty level, with 100 being the poverty line. Responses above 500% were rounded down to 500 [POVERTY](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1085203?studyNumber=10001)
+- **race** (both): Race & Hispanic origin of respondent [HISPRACE](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1084266?studyNumber=10001)
+- **YrEdu** (both): Number of years of schooling, see [EDUCAT](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1084262?studyNumber=10001) for details. Note the limits on the upper and lower bounds (e.g. someone with over 7 years of college is still classified as 19 years of schooling)
+- **Wanted** (both): Bianary variable that is TRUE when [NEWWANTR](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088356?studyNumber=10001) is "Right time", otherwise FLASE
+- **KnowPreg** (PN only, _outcome_): TRUE if [KNEWPREG](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088232?studyNumber=10001) <= 6 weeks
+- **gotPNcare** (PN only, _outcome_): TRUE if [BGNPRENA](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1088239?studyNumber=10001) < 13 weeks
+- **PregNum** (PN only): Number of lifetime pregnancies [PREGNUM](https://www.icpsr.umich.edu/icpsradmin/nsfg/variable/1084304?studyNumber=10001)
+
+Now here are our two data sets. You'll see that `BIRTH` contains `r nrow(BIRTH)` observations, while `PN` only contains `r nrow(PN)` observations
+
+```{r, echo=T}
+glimpse(BIRTH)
+```
+
+```{r, echo=T}
+glimpse(PN)
+```
+
+This occured because we handled missing values by deleting that observation. Since many women couldn't recall what week they first knew they were pregnant or when they first sought prenatal care, our `PN` dataset is much smaller. The two figures below show the patterns of missing data (before I split them into their respective sets)
+
+```{r}
+library(naniar)
+
+read_rds("data/data0.RDS") %>%
+  select(LBW:Wanted) %>%
+  vis_miss()
+
+
+gg_miss_upset(read_rds("data/data0.RDS"), nsets = n_var_miss(read_rds("data/data0.RDS")))
+```
+
+
+
+# Birth dataset
+
+## Univariate
+
+### Continuous
+
+These are our **continuous columns**
+
+```{r}
+glimpse(split_columns(select(BIRTH, -CASEID))$continuous)
+```
+
+```{r}
+select(BIRTH, -CASEID) %>% plot_histogram(ncol=3)
+select(BIRTH, -CASEID) %>% plot_density(ncol=3)
+```
+
+**Age:** This follows an odd pattern, but perhaps it's a function of each mom (possibly) having more than one pregnancy? 
+
+**GA:** This one has one outlier who was born at 9 weeks, which can't be right. But for now it's in our data set
+
+```{r, include=F}
+BIRTH %>%
+  filter(GA>20) %>%
+  ggplot(aes(x=GA)) + geom_histogram(bins=23)
+```
+
+**Income:** You can really see the artificial binning of considering everyone who was 500% _or above_ the poverty line as being only 500%
+
+```{r, results='asis'}
+# Set global options
+st_options(descr.stats=c("mean", "sd", "min", "max", "med", "q1", "q3", "iqr", "skewness", "kurtosis", "cv"))
+
+descr(select(BIRTH, -CASEID), style = "rmarkdown", headings = F)
+```
+
+
+### Discrete
+
+These are our **discrete columns**
+
+```{r}
+glimpse(split_columns(select(BIRTH, -CASEID))$discrete)
+```
+
+```{r}
+select(BIRTH, -CASEID) %>% plot_bar()
+```
+
+We can see that relatively few of subjects had babies that were either premature or low birth weight, but quite a few had unwanted pregnancies
+
+**Counts of categorical variables**
+
+```{r, results="asis"}
+pander(addmargins(table(select(BIRTH, LBW, PreMe, Wanted))), style = "grid")
+```
+
+```{r}
+BIRTH %>%
+  mutate(Premature = ifelse(PreMe=="Premature", T, F)) %>%
+  select(CASEID, LBW, Wanted, Premature) %>%
+  gather("key", "value", -CASEID) %>%
+  ggplot(aes(x=key, fill=value)) + 
+  geom_bar() + labs(x="") + 
+  coord_flip()
+```
+
+
+
+
+## Bivariate
+
+```{r}
+library(DataExplorer)
+select(BIRTH, -CASEID) %>% plot_correlation(type = 'continuous')
+select(BIRTH, -CASEID, -eduCat) %>% plot_correlation(type = 'all')
+
+select(BIRTH, -CASEID) %>% plot_boxplot("race", ncol=3)
+select(BIRTH, -CASEID) %>% plot_boxplot("Wanted", ncol=3)
+select(BIRTH, -CASEID) %>% plot_boxplot("LBW", ncol=3)
+select(BIRTH, -CASEID) %>% plot_boxplot("PreMe", ncol=3)
+
+# split_columns(select(PN, -CASEID))$continuous %>% plot_scatterplot("income")
+```
+
+## Outcome: Low Birth Weight
+
+### Continuous
+
+**By gestational age**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(LBW) %>% 
+  relate(GA)
+
+comparison %>% select(LBW:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+**By BMI**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(LBW) %>% 
+  relate(BMI)
+
+comparison %>% select(LBW:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+**By age**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(LBW) %>% 
+  relate(age)
+
+comparison %>% select(LBW:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+**By income** as percent of poverty line
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(LBW) %>% 
+  relate(income)
+
+comparison %>% select(LBW:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+**By years of education**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(LBW) %>% 
+  relate(YrEdu)
+
+comparison %>% select(LBW:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+### Discrete
+
+By **Race**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(LBW) %>% 
+  relate(race)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+By **Wantedness**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(LBW) %>% 
+  relate(Wanted)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+By **prematurity**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(LBW) %>% 
+  relate(PreMe)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+## Outcome: Pre-mature birth
+
+### Continuous
+
+Note that _pre-mature birth_ is a direct function of *gestational age*
+
+By **BMI**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(PreMe) %>% 
+  relate(BMI)
+
+comparison %>% select(PreMe:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+By **age**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(PreMe) %>% 
+  relate(age)
+
+comparison %>% select(PreMe:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+By **income** as percent of the poverty line
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(PreMe) %>% 
+  relate(income)
+
+comparison %>% select(PreMe:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+By **years of education**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  target_by(PreMe) %>% 
+  relate(YrEdu)
+
+comparison %>% select(PreMe:kurtosis, p50, -na) %>% pander(digits=2)
+comparison %>% plot()
+```
+
+### Discrete
+
+By **Race**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(PreMe) %>% 
+  relate(race)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+By **Wantedness**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(PreMe) %>% 
+  relate(Wanted)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+By **LBW**
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(PreMe) %>% 
+  relate(LBW)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+***
+
+# Selected highlights
+
+## Race
+
+### Wantedness
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(Wanted) %>% 
+  relate(race)
+pander(comparison)
+comparison %>% summary()
+comparison %>% plot()
+```
+
+### Age
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(age) %>% 
+  relate(race)
+pander(comparison)
+# comparison %>% summary()
+comparison %>% plot()
+```
+
+### Income
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(income) %>% 
+  relate(race)
+pander(comparison)
+# comparison %>% summary()
+comparison %>% plot()
+```
+
+### Years of education
+
+```{r}
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(YrEdu) %>% 
+  relate(race)
+pander(comparison)
+# comparison %>% summary()
+comparison %>% plot()
+```
+
+
+```{r}
+# comparison <- BIRTH %>% 
+#   mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+#   mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+#   target_by(YrEdu) %>% 
+#   relate(race)
+# 
+# comparison %>% select(race:kurtosis, p50, -na) %>% pander(digits=2)
+# comparison %>% plot()
+```
+
+
+
+Saving this resource for later [Logistic regression diagnostic plots in R](https://stats.stackexchange.com/questions/234998/logistic-regression-diagnostic-plots-in-r)

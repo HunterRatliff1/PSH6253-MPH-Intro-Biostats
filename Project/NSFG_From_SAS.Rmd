@@ -1,0 +1,219 @@
+---
+title: "NSFG Project from SAS"
+author: "Hunter Ratliff"
+date: "12/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(scales)
+
+require(caTools)
+library(caret)
+library(leaps)
+library(MASS)
+library(tidyverse)
+```
+
+First run the SAS code to produce the `preg.csv` and `resp.csv`
+
+## Simplify the CSVs to variables of interest
+
+```{r resp_csv}
+resp <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/resp.csv") %>%
+  select(CASEID, EDUCAT, HISPRACE, BMI, PREGNUM, USUALCAR, HIEDUC) %>%
+  
+  mutate(
+    # BMI's 95 and above are coded as missing
+    BMI = ifelse(BMI>94, NA, BMI),
+    
+    # Recode some of the default lables from SAS
+    USUALCAR = recode(USUALCAR, "No"=F, "Yes"=T, "Don't know"=NA),
+    HISPRACE = recode(HISPRACE, "Non-Hispanic Black"="Black",
+                      "Non-Hispanic White"="White",
+                      "Non-Hispanic Other"="Other")
+  ) %>%
+  
+  # Make characters factors
+  mutate_if(is.character, factor)
+
+
+
+```
+
+
+```{r preg_csv}
+preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>% 
+  select(CASEID, KNEWPREG, BGNPRENA, LBW=LBW1,
+         OUTCOME, AGECON, PMARPREG,  POVERTY, GA=WKSGEST, 
+         Wantedness=NEWWANTR, TRYSCALE, WANTSCAL, 
+         wgt=WGT2015_2017, SECU, strata=SEST) %>%
+  
+  
+  mutate(
+    # Anything above 94 is missing data per codebook
+    GA       = ifelse(GA>94, NA, GA),
+    BGNPRENA = ifelse(BGNPRENA>94, NA, BGNPRENA),
+    KNEWPREG = ifelse(KNEWPREG>94, NA, KNEWPREG),
+    
+    # Recode some of the default lables from SAS
+    LBW = recode(LBW,
+                  "NO, NOT LOW BIRTH WEIGHT"=F,
+                  "YES, LOW BIRTH WEIGHT"=T),
+    PMARPREG = recode(str_to_lower(PMARPREG),
+                      "no"=F,
+                      "yes"=T)
+  ) %>%
+  
+  # A gestational age over 44 weeks isn't biologically reasonable
+  filter(GA < 45) %>%
+  
+  # Make characters factors
+  mutate_if(is.character, factor)
+```
+
+
+## Join data
+
+In the steps leading up to the creation of `data0`
+
+```{r, echo=T, collapse=T}
+# raw number of rows
+df <- left_join(preg, resp)
+nrow(df)
+
+# number of obs with live birth
+df <- df %>%
+  filter(OUTCOME=="LIVE BIRTH")
+nrow(df)
+
+# Same as above, but with ages 20-40 only
+df <- df %>%
+  filter(AGECON>=20, AGECON<=40)
+nrow(df)
+```
+
+
+
+```{r data0}
+data0 <- 
+  left_join(preg, resp) %>%
+  # must be between 20 - 40 years old and have had a live birth
+  filter(AGECON>=20, AGECON<=40, OUTCOME=="LIVE BIRTH") %>%
+  
+  # OUTCOMES
+  mutate(
+    # Know if pregnant by 6 weeks
+    KnowPreg = factor(if_else(KNEWPREG<=6, "Yes", "No")), 
+    
+    # Got prenatal care in first trimester
+    gotPNcare = factor(if_else(BGNPRENA<13, "Yes", "No")),
+    
+    # Premature delivery
+    PreMe = factor(if_else(GA<37, "Premature", "Term"))
+  ) %>% 
+  
+  
+  # PREDICTORS
+  mutate(
+    Trying_S = cut(TRYSCALE, breaks = c(0,5,10), labels = c("No",  "Yes")),
+    Wanted_S = cut(WANTSCAL, breaks = c(0,2,7,10), labels = c("No", "Maybe", "Yes")),
+    Wanted   = if_else(Wantedness == "Right time", T, F),
+    HIEDUC   = recode(HIEDUC, 
+                      "9TH GRADE OR LESS"="<HS",
+                      "10TH GRADE"="<HS", "11TH GRADE"="<HS",
+                      "12TH GRADE, NO DIPLOMA (NOR GED)"="<HS",
+                      "HIGH SCHOOL GRADUATE (DIPLOMA OR GED)"="HS or GED",
+                      "SOME COLLEGE BUT NO DEGREE"="Some college",
+                      "ASSOCIATE DEGREE IN COLLEGE/UNIVERSITY"="Associates",
+                      "BACHELOR'S DEGREE"="Bachelors",
+                      "MASTER'S DEGREE"="Grad/prof school",
+                      "PROFESSIONAL DEGREE"="Grad/prof school",
+                      "DOCTORATE DEGREE"="Grad/prof school"
+                      )
+  ) %>%
+  
+  # Make characters factors
+  mutate_if(is.character, factor) %>%
+  
+  select(CASEID,
+         # Outcome vars
+         LBW, PreMe, gotPNcare, KnowPreg,
+         
+         age=AGECON, income=POVERTY, YrEdu=EDUCAT, race=HISPRACE, BMI, PregNum=PREGNUM,
+         eduCat=HIEDUC,
+         # PMARPREG, USUALCAR,
+         GA, Wanted,
+         wgt:strata) 
+         # everything()
+```
+
+### Patterns of missing data
+
+```{r}
+library(naniar)
+
+data0 %>%
+  select(LBW:Wanted) %>%
+  vis_miss()
+
+
+gg_miss_upset(data0, nsets = n_var_miss(data0))
+```
+
+## Make two data sets
+
+Make two datasets, `BIRTH` with birth outcomes and `PN` with prenatal care outcomes
+
+```{r}
+BIRTH <- data0 %>%
+  select(CASEID, LBW, PreMe, 
+         GA, BMI, age, income, race, YrEdu, eduCat, Wanted) %>%
+  na.omit()
+
+PN <- data0 %>% 
+  select(CASEID, KnowPreg, gotPNcare, LBW, PreMe, 
+         GA, BMI, PregNum, age, income, race, YrEdu, eduCat, Wanted) %>%
+  na.omit()
+
+BIRTH %>% write_rds("data/BIRTH.RDS")
+PN %>% write_rds("data/PN.RDS")
+data0 %>% write_rds("data/data0.RDS")
+
+rm(resp, resp_csv, preg, preg_csv, data0)
+```
+
+
+
+## Trying from SAS
+
+```{r readSAS}
+preg_csv <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv")
+
+
+preg_SAS <- haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/pregsimple.sas7bdat", 
+    NULL)
+
+preg_SAS$WANTPART %>% str()
+
+resp_SAS <- haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/respsimple.sas7bdat", 
+    NULL)
+
+haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/pregdata.sas7bdat", 
+    NULL) %>%
+  select(CASEID, PREGORDR, WKSGEST, BIRTHWGT_LB1, KNEWPREG, PRIORSMK,
+         POSTSMKS, NPOSTSMK, BGNPRENA, EVUSEINT, STOPDUSE, WHYSTOPD)
+
+
+# # "CASEID", "PREGORDR", "WKSGEST", "BIRTHWGT_LB1", "KNEWPREG", "PRIORSMK",
+# # "POSTSMKS", "NPOSTSMK", "BGNPRENA", "EVUSEINT", "STOPDUSE", "WHYSTOPD",
+# "TRYSCALE", "WANTSCAL", "OUTCOME", "AGECON", "PMARPREG" ,"RMAROUT6",
+# "LBW1", "WANTRESP", "WANTPART", "NEWWANTR", "POVERTY", "WGT2015_2017",
+# "SECU", "SEST"
+
+
+
+
+```
