@@ -5,6 +5,7 @@
 .Renviron
 .DS_Store
 Textbook datasets
+Exam
 *.Rproj
 
 # HTML, png, pdf
