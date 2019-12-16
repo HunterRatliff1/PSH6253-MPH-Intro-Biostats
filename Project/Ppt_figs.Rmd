@@ -1,0 +1,576 @@
+---
+title: "Plots for powerpoint"
+author: "Hunter Ratliff"
+date: "12/12/2019"
+output:
+  word_document: 
+    toc: yes
+  pdf_document:
+    df_print: kable
+    highlight: tango
+    toc: yes
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, warning=F, message=F)
+library(pander)
+library(scales)
+library(ggthemes)
+library(gridExtra)
+
+
+require(caTools)
+library(caret)
+library(leaps)
+library(MASS)
+library(DataExplorer)
+library(summarytools)
+library(dlookr)
+library(tidyverse)
+
+BIRTH <- read_rds("data/BIRTH.RDS") %>%
+  mutate(BirthWt = ifelse(LBW, "Low", "Normal"))
+PN    <- read_rds("data/PN.RDS")
+data0    <- read_rds("data/data0.RDS")
+```
+
+## LBW & PreMe
+
+```{r}
+count(BIRTH, LBW) %>% mutate(`%`=100*n/sum(n)) %>%
+  pander()
+
+count(BIRTH, PreMe) %>% mutate(`%`=100*n/sum(n)) %>%
+  pander()
+
+comparison <- BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(LBW) %>% 
+  relate(PreMe)
+comparison %>% addmargins() %>% pander()
+comparison %>% plot() # 500 x 500  EPS
+```
+
+
+## Prenatal care & Knowing pregnant
+
+```{r}
+count(PN, KnowPreg) %>% mutate(`%`=100*n/sum(n)) %>%
+  pander()
+
+count(PN, gotPNcare) %>% mutate(`%`=100*n/sum(n)) %>%
+  pander()
+
+count(PN, KnowPreg, gotPNcare) %>%
+  filter(KnowPreg=="Yes") %>%
+  mutate(`%`=100*n/sum(n)) %>%
+  pander()
+
+comparison <- PN %>% 
+  target_by(gotPNcare) %>% 
+  relate(KnowPreg)
+comparison %>% addmargins() %>% pander()
+comparison %>% plot()  # 500 x 500 EPS
+```
+# ggthemes
+
+```{r}
+# RColorBrewer::brewer.pal(8, "Paired")
+# RColorBrewer::display.brewer.pal(8, "Paired")
+
+myTheme       <- theme_bw() + theme(legend.position="bottom") 
+LBW_scale     <- scale_fill_manual(name="BirthWt", values = c("Low"="#E31A1C", "Normal"="grey20"))
+PreMe_scale   <- scale_fill_manual(name="Prematurity", values = c("Premature"="#FF7F00", "Term"="grey20"))
+Know_scale    <- scale_fill_manual(name="Knew Pregnant", values = c("No"="#33A02C", "Yes"="grey20"))
+PNcare_scale  <- scale_fill_manual(name="Got PN care", values = c("No"="#1F78B4", "Yes"="grey20"))
+scale_wanted <- scale_fill_manual(values=c("Unwanted"="#7cb5ec", "Wanted"="#90ed7d"))
+```
+
+# Density
+
+## Gestational age
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=GA)) +
+  geom_density(aes(fill=BirthWt), alpha=0.5) +
+  labs(x="Gestational age (weeks)") +
+  myTheme + LBW_scale
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=GA)) +
+  geom_histogram(aes(fill=PreMe), bins=37) +
+  labs(x="Gestational age (weeks)") +
+  myTheme + PreMe_scale
+
+p3 <- PN %>%
+  ggplot(aes(x=GA)) +
+  geom_density(aes(fill=KnowPreg), alpha=0.5) +
+  labs(x="Gestational age (weeks)") +
+  myTheme + Know_scale
+
+p4 <- PN %>%
+  ggplot(aes(x=GA)) +
+  geom_density(aes(fill=gotPNcare), alpha=0.5) +
+  labs(x="Gestational age (weeks)") +
+  myTheme + PNcare_scale
+
+grid.arrange(p1, p2, p3, p4)  # 800 x 400 
+```
+
+## BMI
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=BMI)) +
+  geom_density(aes(fill=BirthWt), alpha=0.5) +
+  labs(x="Body Mass Index") +
+  myTheme + LBW_scale
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=BMI)) +
+  geom_density(aes(fill=PreMe), alpha=0.5) +
+  labs(x="Body Mass Index") +
+  myTheme + PreMe_scale
+
+p3 <- PN %>%
+  ggplot(aes(x=BMI)) +
+  geom_density(aes(fill=KnowPreg), alpha=0.5) +
+  labs(x="Body Mass Index") +
+  myTheme + Know_scale
+
+p4 <- PN %>%
+  ggplot(aes(x=BMI)) +
+  geom_density(aes(fill=gotPNcare), alpha=0.5) +
+  labs(x="Body Mass Index") +
+  myTheme + PNcare_scale
+
+grid.arrange(p1, p2, p3, p4)  # 800 x 400 
+
+```
+
+## Age
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=age)) +
+  geom_density(aes(fill=BirthWt), alpha=0.5) +
+  labs(x="Age (at conception)") +
+  myTheme + LBW_scale
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=age)) +
+  geom_density(aes(fill=PreMe), alpha=0.5) +
+  labs(x="Age (at conception)") +
+  myTheme + PreMe_scale
+
+p3 <- PN %>%
+  ggplot(aes(x=age)) +
+  geom_density(aes(fill=KnowPreg), alpha=0.5) +
+  labs(x="Age (at conception)") +
+  myTheme + Know_scale
+
+p4 <- PN %>%
+  ggplot(aes(x=age)) +
+  geom_density(aes(fill=gotPNcare), alpha=0.5) +
+  labs(x="Age (at conception)") +
+  myTheme + PNcare_scale
+
+grid.arrange(p1, p2, p3, p4)   # 800 x 400 
+# rm(p1, p2, p3, p4)
+```
+
+## Income
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=income)) +
+  geom_density(aes(fill=BirthWt), alpha=0.5) +
+  labs(x="% of federal poverty line") +
+  myTheme + LBW_scale
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=income)) +
+  geom_density(aes(fill=PreMe), alpha=0.5) +
+  labs(x="% of federal poverty line") +
+  myTheme + PreMe_scale
+
+p3 <- PN %>%
+  ggplot(aes(x=income)) +
+  geom_density(aes(fill=KnowPreg), alpha=0.5) +
+  labs(x="% of federal poverty line") +
+  myTheme + Know_scale
+
+p4 <- PN %>%
+  ggplot(aes(x=income)) +
+  geom_density(aes(fill=gotPNcare), alpha=0.5) +
+  labs(x="% of federal poverty line") +
+  myTheme + PNcare_scale
+
+grid.arrange(p1, p2, p3, p4)   # 800 x 400 
+# rm(p1, p2, p3, p4)
+```
+
+## Years of education
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=YrEdu)) +
+  geom_density(aes(fill=BirthWt), alpha=0.5) +
+  labs(x="Years of Education") +
+  myTheme + LBW_scale
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=YrEdu)) +
+  geom_density(aes(fill=PreMe), alpha=0.5) +
+  labs(x="Years of Education") +
+  myTheme + PreMe_scale
+
+p3 <- PN %>%
+  ggplot(aes(x=YrEdu)) +
+  geom_density(aes(fill=KnowPreg), alpha=0.5) +
+  labs(x="Years of Education") +
+  myTheme + Know_scale
+
+p4 <- PN %>%
+  ggplot(aes(x=YrEdu)) +
+  geom_density(aes(fill=gotPNcare), alpha=0.5) +
+  labs(x="Years of Education") +
+  myTheme + PNcare_scale
+
+grid.arrange(p1, p2, p3, p4)
+# rm(p1, p2, p3, p4)
+```
+
+# Race
+
+```{r}
+p0 <- BIRTH %>%
+  ggplot(aes(x=race)) +
+  geom_bar(color="black") +
+  labs(y="Count", x="", title="Overall distribution of race") +
+  myTheme + coord_flip()
+
+p1 <- BIRTH %>%
+  ggplot(aes(x=race)) +
+  geom_bar(aes(fill=BirthWt), color="black", position = "fill") +
+  labs(y="% LBW", x="") +
+  guides(fill=F) +
+  scale_y_continuous(labels=percent) +
+  myTheme + LBW_scale + coord_flip()
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=race)) +
+  geom_bar(aes(fill=PreMe), color="black", position = "fill") +
+  labs(y="% Premature", x="") +
+  guides(fill=F) +
+  scale_y_continuous(labels=percent) +
+  myTheme + PreMe_scale + coord_flip()
+
+p3 <- PN %>%
+  ggplot(aes(x=race)) +
+  geom_bar(aes(fill=KnowPreg), color="black", position = "fill") +
+  labs(y="% Not Know Preg", x="") +
+  guides(fill=F) +
+  scale_y_continuous(labels=percent) +
+  myTheme + Know_scale + coord_flip()
+
+p4 <- PN %>%
+  ggplot(aes(x=race)) +
+  geom_bar(aes(fill=gotPNcare), position = "fill", color="black") +
+  labs(y="% No PN care", x="") +
+  guides(fill=F) +
+  scale_y_continuous(labels=percent) +
+  myTheme + PNcare_scale + coord_flip()
+
+
+
+# 
+# grid.arrange(
+#   p0, p1, p2, p3, p4, grid::textGrob(""),
+#   layout_matrix = rbind(c(1,1,1,2,2),c(1,1,1,3,3),c(4,4,5,5,6))
+# )
+
+grid.arrange(
+  p0, p1, p2, p3, p4, grid::textGrob(""),
+  layout_matrix = rbind(c(1,1,2),c(1,1,3),c(4,5,6))
+) # 800 x 400
+# rm(p0, p1, p2, p3, p4)
+```
+
+
+```{r}
+BIRTH %>% 
+  mutate(LBW = factor(ifelse(LBW, "Low Wt", "Normal Wt"))) %>%
+  mutate(Wanted = factor(ifelse(Wanted, "Wanted", "Unwanted"))) %>%
+  target_by(LBW) %>% 
+  relate(Wanted) %>%
+  plot()
+
+par(mfrow = c(2, 2))
+mosaicplot(Wanted~BirthWt, data=BIRTH, color=c("#E31A1C", "grey20"), main="LBW")
+mosaicplot(Wanted~PreMe, data=BIRTH, color=c("#FF7F00", "grey20"), main="Premature")
+mosaicplot(Wanted~KnowPreg, data=PN, color=c("#33A02C", "grey20"), main="Know Preg")
+mosaicplot(Wanted~gotPNcare, data=PN, color=c("#1F78B4", "grey20"), main="Got PN care")
+
+```
+
+
+# Bivariate
+
+Continous vars
+
+```{r}
+select(BIRTH, -CASEID) %>% DataExplorer::plot_correlation("continuous")
+# DataExplorer::plot_scatterplot(BIRTH, by="income")
+```
+
+## Box plots 
+
+### Wanted
+
+```{r}
+p1 <- BIRTH %>%
+  mutate(Wanted = ifelse(Wanted, "Wanted", "Unwanted")) %>%
+  ggplot(aes(x=Wanted, y=age)) +
+  labs(x="", y="Age", title="(A)") + 
+  geom_boxplot(aes(fill=Wanted)) +
+  scale_wanted + myTheme + guides(fill=F)
+
+p2 <- BIRTH %>%
+  mutate(Wanted = ifelse(Wanted, "Wanted", "Unwanted")) %>%
+  ggplot(aes(x=Wanted, y=BMI)) +
+  labs(x="", y="BMI", title="(B)") + 
+  geom_boxplot(aes(fill=Wanted)) +
+  scale_wanted + myTheme + guides(fill=F)
+
+p3 <- BIRTH %>%
+  mutate(Wanted = ifelse(Wanted, "Wanted", "Unwanted")) %>%
+  ggplot(aes(x=Wanted, y=income)) +
+  labs(x="", y="Income (% FPL)", title="(C)") + 
+  geom_boxplot(aes(fill=Wanted)) +
+  scale_wanted + myTheme + guides(fill=F)
+
+p4 <- BIRTH %>%
+  mutate(Wanted = ifelse(Wanted, "Wanted", "Unwanted")) %>%
+  ggplot(aes(x=Wanted, y=YrEdu)) +
+  labs(x="", y="Years of education", title="(D)") + 
+  geom_boxplot(aes(fill=Wanted)) +
+  scale_wanted + myTheme + guides(fill=F)
+
+p5 <- BIRTH %>%
+  filter(GA>20) %>%
+  mutate(Wanted = ifelse(Wanted, "Wanted", "Unwanted")) %>%
+  ggplot(aes(x=Wanted, y=GA)) +
+  labs(x="", y="Gestational age", title="(E)",
+       caption="Excluding 1 observation\nat 10 weeks (wanted)") + 
+  geom_boxplot(aes(fill=Wanted)) +
+  scale_wanted + myTheme + guides(fill=F) 
+
+# grid.arrange(grid::textGrob("Distributions\nof\nWantedness"), p1, p2, p3, p4, p5, ncol=3)
+grid.arrange(p1, p2, p3, p4, p5, 
+             layout_matrix = rbind(c(1,2,5),c(3,4,5)))
+```
+
+### LBW
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=BirthWt, y=age)) +
+  labs(x="", y="Age", title="(A)") + 
+  geom_boxplot(aes(fill=BirthWt), alpha=0.75) +
+  LBW_scale + myTheme + guides(fill=F)
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=BirthWt, y=BMI)) +
+  labs(x="", y="BMI", title="(B)") + 
+  geom_boxplot(aes(fill=BirthWt), alpha=0.75) +
+  LBW_scale + myTheme + guides(fill=F)
+
+p3 <- BIRTH %>%
+  ggplot(aes(x=BirthWt, y=income)) +
+  labs(x="", y="Income (% FPL)", title="(C)") + 
+  geom_boxplot(aes(fill=BirthWt), alpha=0.75) +
+  LBW_scale + myTheme + guides(fill=F)
+
+p4 <- BIRTH %>%
+  ggplot(aes(x=BirthWt, y=YrEdu)) +
+  labs(x="", y="Years of education", title="(D)") + 
+  geom_boxplot(aes(fill=BirthWt), alpha=0.75) +
+  LBW_scale + myTheme + guides(fill=F)
+
+p5 <- BIRTH %>%
+  filter(GA>20) %>%
+  ggplot(aes(x=BirthWt, y=GA)) +
+  labs(x="", y="Gestational age", title="(E)",
+       caption="Excluding 1 observation\nat 10 weeks (Low BirthWt)") + 
+  geom_boxplot(aes(fill=BirthWt), alpha=0.75) +
+  LBW_scale + myTheme + guides(fill=F) 
+
+# grid.arrange(grid::textGrob("Distributions\nof\nWantedness"), p1, p2, p3, p4, p5, ncol=3)
+grid.arrange(p1, p2, p3, p4, p5, 
+             layout_matrix = rbind(c(1,2,5),c(3,4,5)))
+```
+
+### PreMe
+
+```{r}
+p1 <- BIRTH %>%
+  ggplot(aes(x=PreMe, y=age)) +
+  labs(x="", y="Age", title="(A)") + 
+  geom_boxplot(aes(fill=PreMe), alpha=0.75) +
+  PreMe_scale + myTheme + guides(fill=F)
+
+p2 <- BIRTH %>%
+  ggplot(aes(x=PreMe, y=BMI)) +
+  labs(x="", y="BMI", title="(B)") + 
+  geom_boxplot(aes(fill=PreMe), alpha=0.75) +
+  PreMe_scale + myTheme + guides(fill=F)
+
+p3 <- BIRTH %>%
+  ggplot(aes(x=PreMe, y=income)) +
+  labs(x="", y="Income (% FPL)", title="(C)") + 
+  geom_boxplot(aes(fill=PreMe), alpha=0.75) +
+  PreMe_scale + myTheme + guides(fill=F)
+
+p4 <- BIRTH %>%
+  ggplot(aes(x=PreMe, y=YrEdu)) +
+  labs(x="", y="Years of education", title="(D)") + 
+  geom_boxplot(aes(fill=PreMe), alpha=0.75) +
+  PreMe_scale + myTheme + guides(fill=F)
+
+p5 <- BIRTH %>%
+  filter(GA>20) %>%
+  ggplot(aes(x=PreMe, y=GA)) +
+  labs(x="", y="Gestational age", title="(E)",
+       caption="Excluding 1 observation\nat 10 weeks (Low BirthWt)") + 
+  geom_boxplot(aes(fill=PreMe), alpha=0.75) +
+  PreMe_scale + myTheme + guides(fill=F) 
+
+# 
+# grid.arrange(p1, p2, p3, p4, p5, 
+#              layout_matrix = rbind(c(1,2,5),c(3,4,5)))
+grid.arrange(p1, p2, p3, p4)
+```
+
+
+### KnowPreg
+
+
+```{r}
+p1 <- PN %>%
+  ggplot(aes(x=KnowPreg, y=age)) +
+  labs(x="", y="Age", title="(A)") + 
+  geom_boxplot(aes(fill=KnowPreg), alpha=0.75) +
+  Know_scale + myTheme + guides(fill=F)
+
+p2 <- PN %>%
+  ggplot(aes(x=KnowPreg, y=BMI)) +
+  labs(x="", y="BMI", title="(B)") + 
+  geom_boxplot(aes(fill=KnowPreg), alpha=0.75) +
+  Know_scale + myTheme + guides(fill=F)
+
+p3 <- PN %>%
+  ggplot(aes(x=KnowPreg, y=income)) +
+  labs(x="", y="Income (% FPL)", title="(C)") + 
+  geom_boxplot(aes(fill=KnowPreg), alpha=0.75) +
+  Know_scale + myTheme + guides(fill=F)
+
+p4 <- PN %>%
+  ggplot(aes(x=KnowPreg, y=YrEdu)) +
+  labs(x="", y="Years of education", title="(D)") + 
+  geom_boxplot(aes(fill=KnowPreg), alpha=0.75) +
+  Know_scale + myTheme + guides(fill=F)
+
+p5 <- PN %>%
+  ggplot(aes(x=KnowPreg, y=GA)) +
+  labs(x="", y="Gestational age", title="(E)") + 
+  geom_boxplot(aes(fill=KnowPreg), alpha=0.75) +
+  Know_scale + myTheme + guides(fill=F) 
+
+# grid.arrange(grid::textGrob("Distributions\nof\nWantedness"), p1, p2, p3, p4, p5, ncol=3)
+grid.arrange(p1, p2, p3, p4, p5, 
+             layout_matrix = rbind(c(1,2,5),c(3,4,5)))
+```
+
+### PN care
+
+```{r}
+p1 <- PN %>%
+  ggplot(aes(x=gotPNcare, y=age)) +
+  labs(x="", y="Age", title="(A)") + 
+  geom_boxplot(aes(fill=gotPNcare), alpha=0.75) +
+  PNcare_scale + myTheme + guides(fill=F)
+
+p2 <- PN %>%
+  ggplot(aes(x=gotPNcare, y=BMI)) +
+  labs(x="", y="BMI", title="(B)") + 
+  geom_boxplot(aes(fill=gotPNcare), alpha=0.75) +
+  PNcare_scale + myTheme + guides(fill=F)
+
+p3 <- PN %>%
+  ggplot(aes(x=gotPNcare, y=income)) +
+  labs(x="", y="Income (% FPL)", title="(C)") + 
+  geom_boxplot(aes(fill=gotPNcare), alpha=0.75) +
+  PNcare_scale + myTheme + guides(fill=F)
+
+p4 <- PN %>%
+  ggplot(aes(x=gotPNcare, y=YrEdu)) +
+  labs(x="", y="Years of education", title="(D)") + 
+  geom_boxplot(aes(fill=gotPNcare), alpha=0.75) +
+  PNcare_scale + myTheme + guides(fill=F)
+
+p5 <- PN %>%
+  ggplot(aes(x=gotPNcare, y=GA)) +
+  labs(x="", y="Gestational age", title="(E)") + 
+  geom_boxplot(aes(fill=gotPNcare), alpha=0.75) +
+  PNcare_scale + myTheme + guides(fill=F) 
+
+# grid.arrange(grid::textGrob("Distributions\nof\nWantedness"), p1, p2, p3, p4, p5, ncol=3)
+grid.arrange(p1, p2, p3, p4, p5, 
+             layout_matrix = rbind(c(1,2,5),c(3,4,5)))
+```
+
+# Contable
+
+## For race
+
+```{r}
+bind_cols(
+{BIRTH %>% 
+  group_by(race) %>%
+  mutate(PreMe = ifelse(PreMe=="Term", 0, 1)) %>%
+  summarise(
+    LBW = sum(LBW)/n(),
+    PreMe = sum(PreMe)/n()
+  )},
+
+{PN %>% 
+  group_by(race) %>%
+  mutate(KnowPreg = ifelse(KnowPreg=="No", 0, 1)) %>%
+  mutate(gotPNcare = ifelse(gotPNcare=="No", 0, 1)) %>%
+  summarise(
+    KnowPreg = sum(KnowPreg)/n(),
+    gotPNcare = sum(gotPNcare)/n()
+  )
+}) %>%
+  select(-race1) %>%
+  mutate_if(is.numeric, function(x) round(x*100, 1)) %>%
+  pander()
+
+
+```
+
+# test
+
+```{r, results='asis'}
+st_options(descr.stats=c("mean", "sd", "min", "max", "med", "q1", "q3", "iqr", "skewness", "kurtosis", "cv"))
+descr(select(PN, -CASEID), style = "rmarkdown", headings = F)
+```
+
+

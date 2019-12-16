@@ -427,6 +427,11 @@ comparison %>% plot()
 # comparison %>% plot()
 ```
 
+***
+
+## Wantedness
+
 
 
 Saving this resource for later [Logistic regression diagnostic plots in R](https://stats.stackexchange.com/questions/234998/logistic-regression-diagnostic-plots-in-r)
+

@@ -2,15 +2,18 @@
 title: "Some models"
 author: "Hunter Ratliff"
 date: "11/17/2019"
+always_allow_html: true
 output:
-  html_document:
-    theme: united
+  word_document: 
     toc: yes
-    toc_float: yes
   pdf_document:
     df_print: kable
     highlight: tango
     toc: yes
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -18,17 +21,27 @@ knitr::opts_chunk$set(echo=F, warning=F, message=F, collapse = T)
 library(pander)
 library(scales)
 library(ggthemes)
+
+library(sjPlot)
+# library(sjlabelled)
+# library(sjmisc)
+
+
 # library(randomForest)
-# library(survey) # dsgn <- svydesign(ids=~CASEID, strata = ~strata, weights=~wgt, data=data)
 # require(caTools)
 # library(caret)
 library(leaps)
 library(MASS)
-library(kableExtra)
-library(tidyverse)
+
+# library(survey) # dsgn <- svydesign(ids=~CASEID, strata = ~strata, weights=~wgt, data=data)
 # library(Epi)        # Epi::clogistic for conditional logit
-# library(survival)   # survival::clogit()
-### survival allows for weights
+# library(survival)   # survival::clogit() works like Epi package, but with weights
+# library(rstanarm)   # rstanarm::stan_glm() for Bayesian models
+library(kableExtra)
+library(broom)
+library(tidyverse)
+
+theme_set(theme_sjplot())
 ```
 
 # Set reference levels
@@ -141,8 +154,6 @@ This model predicts being born as **low birth weight** with the formula below
 mod.LBW <- glm(LBW ~ GA + BMI + age + income + race + YrEdu + Wanted, 
     data=BIRTH, family=binomial(link = "logit"))
 pander(mod.LBW)
-
-# Anova(mod.LBW, type = 3)  # type 3 anova
 ```
 
 Note that the estimate above is the **Log-odds**. The table below transforms the log-odds into odds ratios
@@ -156,16 +167,107 @@ broom::tidy(mod.LBW) %>%
   cbind(exp(broom::confint_tidy(mod.LBW))) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
-  mutate(
-    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-    ) %>%
-  knitr::kable(digits=4, escape=F) %>%
-  kable_styling("striped", full_width = F)
-# Also can do this --> exp(cbind(OR = coef(mod.LBW), confint(mod.LBW))) %>% round(3)    
+  select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
+  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  mutate(conf.low   = round(conf.low, 3)) %>%
+  mutate(conf.high  = round(conf.high, 3)) %>%
+  pander()
+#   mutate(
+#     p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+#     ) %>%
+#   knitr::kable(digits=4, escape=F) %>%
+#   kable_styling("striped", full_width = F)
+# # Also can do this --> exp(cbind(OR = coef(mod.LBW), confint(mod.LBW))) %>% round(3)    
 
 ```
 
-## Graphics
+## OR plot
+
+```{r}
+sjPlot::plot_model(mod.LBW, title = "OR of having LBW child",
+                   sort.est=T, show.values = T, value.offset = .4)
+```
+
+## Type III Anova
+
+```{r}
+# type 3 anova
+car::Anova(mod.LBW, type = 3) %>% pander()
+```
+
+## Hosmer-Lemeshow & more
+
+```{r}
+# diagnostics
+rms::lrm(mod.LBW[["formula"]], 
+         data=BIRTH) %>% 
+   pander(coefs=F)
+
+
+# # Global signifigance
+# 1-pchisq(
+#   mod.LBW[["null.deviance"]]-mod.LBW[["deviance"]],
+#   mod.LBW[["df.null"]]-mod.LBW[["df.residual"]]
+# )
+
+# Hosmer-Lemeshow Goodness of Fit (GOF) Test
+ResourceSelection::hoslem.test(
+  ifelse(BIRTH$LBW=="Normal", 0, 1),
+  fitted(mod.LBW))
+```
+
+## Multicolinearity / VIF
+
+Variance inflation factors should be below 5 or 10
+
+```{r}
+car::vif(mod.LBW)
+# cor(model.matrix(mod.LBW)[,-1]) %>% corrplot::corrplot()
+```
+
+## Influential values
+
+```{r}
+model.data <- broom::augment(mod.LBW) %>% 
+  mutate(index = 1:n())
+```
+
+```{r}
+model.data %>%
+  ggplot(aes(index, y=.cooksd)) + 
+  geom_linerange(aes(ymin=0, ymax=.cooksd, color=LBW), alpha=0.75) +
+  geom_text(aes(x=index, y=.cooksd, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+```
+
+```{r}
+model.data %>%
+  ggplot(aes(index, .std.resid)) + 
+  geom_point(aes(color = LBW), alpha = .5) +
+  geom_text(aes(x=index, y=.std.resid, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+```
+
+```{r}
+# Any standardized residuals above 3?
+model.data %>% 
+  filter(abs(.std.resid) > 3) %>% 
+  select(index, .std.resid, .cooksd, LBW:Wanted, .hat) %>%
+  pander(caption="standardized residuals with abs value > 3", digits=3)
+```
+
+```{r}
+plot(mod.LBW, which = 5)
+rm(model.data)
+```
+
+
+
+## Prediction
+
+Using adjusted rates (assuming other variables are at their means)
 
 ```{r prediction1}
 ### Predictions of propabilities ###
@@ -227,13 +329,7 @@ df %>% ggplot(aes(x=GA, y=fit, group=race)) +
        title="Predicted Pr(LBW), by gestational age & race")
 ```
 
-## Validation
-
-VIF 
-
-```{r}
-car::vif(mod.LBW)
-```
+## Cross-Validation
 
 Confusion matrix using test & training data
 
@@ -299,26 +395,101 @@ broom::tidy(mod.PreMe) %>%
   cbind(exp(broom::confint_tidy(mod.PreMe))) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
-  mutate(
-    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-    ) %>%
-  knitr::kable(digits=4, escape=F) %>%
-  kable_styling("striped", full_width = F)
+  select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
+  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  mutate(conf.low   = round(conf.low, 3)) %>%
+  mutate(conf.high  = round(conf.high, 3)) %>%
+  pander()
+  # mutate(
+  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+  #   ) %>%
+  # knitr::kable(digits=4, escape=F) %>%
+  # kable_styling("striped", full_width = F)
 ```
+
+## OR plot
+
+```{r}
+sjPlot::plot_model(mod.PreMe, title = "OR of having birth prematurely",
+                   sort.est=T, show.values = T, value.offset = .4)
+```
+
+## Type III Anova
+
+```{r}
+# type 3 anova
+car::Anova(mod.PreMe, type = 3) %>% pander()
+```
+
+## Hosmer-Lemeshow & more
+
+```{r}
+# diagnostics
+rms::lrm(mod.PreMe[["formula"]], 
+         data=BIRTH) %>% 
+   pander(coefs=F)
+
+# Hosmer-Lemeshow Goodness of Fit (GOF) Test
+ResourceSelection::hoslem.test(
+  ifelse(BIRTH$PreMe=="Term", 0, 1),
+  fitted(mod.PreMe))
+```
+
+## Multicolinearity / VIF
+
+Variance inflation factors should be below 5 or 10
+
+```{r}
+car::vif(mod.PreMe)
+```
+
+## Influential values
+
+```{r}
+model.data <- broom::augment(mod.PreMe) %>% 
+  mutate(index = 1:n())
+
+model.data %>%
+  ggplot(aes(index, y=.cooksd)) + 
+  geom_linerange(aes(ymin=0, ymax=.cooksd, color=PreMe), alpha=0.75) +
+  geom_text(aes(x=index, y=.cooksd, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+model.data %>%
+  ggplot(aes(index, .std.resid)) + 
+  geom_point(aes(color = PreMe), alpha = .5) +
+  geom_text(aes(x=index, y=.std.resid, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+# Any standardized residuals above 3?
+model.data %>% 
+  filter(abs(.std.resid) > 3)
+
+plot(mod.PreMe, which = 5)
+rm(model.data)
+```
+
+
+
+
+
+
 
 
 
 
 # Knew pregnant
 
-Counts of who knew they were pregnant
+Counts of who knew they were pregnant within the first 6 weeks of the pregnancy
 
 ```{r}
 table(PN$KnowPreg) %>% 
-  pander(caption="Counts of if mother knew pregnant or not by XXX weeks")
+  pander(caption="Counts of if mother knew pregnant or not within 6 weeks")
 ```
 
-This model predicts ...
+This model predicts the chance of subjects knowing they were pregnant within the first 6 weeks
 
 ```{r}
 mod.KnowPreg <- glm(KnowPreg~PregNum + age + income + race + YrEdu + PregNum + Wanted, 
@@ -337,12 +508,85 @@ broom::tidy(mod.KnowPreg) %>%
   cbind(exp(broom::confint_tidy(mod.KnowPreg))) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
-  mutate(
-    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-    ) %>%
-  knitr::kable(digits=4, escape=F) %>%
-  kable_styling("striped", full_width = F)
+  select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
+  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  mutate(conf.low   = round(conf.low, 3)) %>%
+  mutate(conf.high  = round(conf.high, 3)) %>%
+  pander()
+  # mutate(
+  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+  #   ) %>%
+  # knitr::kable(digits=4, escape=F) %>%
+  # kable_styling("striped", full_width = F)
 ```
+
+## OR plot
+
+```{r}
+sjPlot::plot_model(mod.KnowPreg, title = "OR of knowing pregnancy by 6 wk",
+                   sort.est=T, show.values = T, value.offset = .4)
+```
+
+
+## Type III Anova
+
+```{r}
+# type 3 anova
+car::Anova(mod.KnowPreg, type = 3) %>% pander()
+```
+
+## Hosmer-Lemeshow & more
+
+```{r}
+# diagnostics
+rms::lrm(mod.KnowPreg[["formula"]], 
+         data=PN) %>% 
+   pander(coefs=F)
+
+# Hosmer-Lemeshow Goodness of Fit (GOF) Test
+ResourceSelection::hoslem.test(
+  ifelse(PN$KnowPreg=="Yes", 1, 0),
+  fitted(mod.KnowPreg))
+```
+
+## Multicolinearity / VIF
+
+Variance inflation factors should be below 5 or 10
+
+```{r}
+car::vif(mod.KnowPreg)
+```
+
+## Influential values
+
+```{r}
+model.data <- broom::augment(mod.KnowPreg) %>% 
+  mutate(index = 1:n())
+
+model.data %>%
+  ggplot(aes(index, y=.cooksd)) + 
+  geom_linerange(aes(ymin=0, ymax=.cooksd, color=KnowPreg), alpha=0.75) +
+  geom_text(aes(x=index, y=.cooksd, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+model.data %>%
+  ggplot(aes(index, .std.resid)) + 
+  geom_point(aes(color = KnowPreg), alpha = .5) +
+  geom_text(aes(x=index, y=.std.resid, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+# Any standardized residuals above 3?
+model.data %>% 
+  filter(abs(.std.resid) > 3)
+
+plot(mod.KnowPreg, which = 5)
+rm(model.data)
+```
+
+
+
 
 
 # Got prenatal care
@@ -371,13 +615,81 @@ broom::tidy(mod.gotPNcare) %>%
   cbind(exp(broom::confint_tidy(mod.gotPNcare))) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
-  mutate(
-    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-    ) %>%
-  knitr::kable(digits=4, escape=F) %>%
-  kable_styling("striped", full_width = F)
+  select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
+  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  mutate(conf.low   = round(conf.low, 3)) %>%
+  mutate(conf.high  = round(conf.high, 3)) %>%
+  pander()
+  # mutate(
+  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+  #   ) %>%
+  # knitr::kable(digits=4, escape=F) %>%
+  # kable_styling("striped", full_width = F)
+```
+
+## OR plot
+
+```{r}
+sjPlot::plot_model(mod.gotPNcare, title = "OR of getting prenatal care",
+                   sort.est=T, show.values = T, value.offset = .4)
 ```
 
 
+## Type III Anova
+
+```{r}
+# type 3 anova
+car::Anova(mod.gotPNcare, type = 3) %>% pander()
+```
+
+## Hosmer-Lemeshow & more
+
+```{r}
+# diagnostics
+rms::lrm(mod.gotPNcare[["formula"]], 
+         data=PN) %>% 
+   pander(coefs=F)
+
+# Hosmer-Lemeshow Goodness of Fit (GOF) Test
+ResourceSelection::hoslem.test(
+  ifelse(PN$gotPNcare=="Yes", 1, 0),
+  fitted(mod.gotPNcare))
+```
+
+## Multicolinearity / VIF
+
+Variance inflation factors should be below 5 or 10
+
+```{r}
+car::vif(mod.gotPNcare)
+```
+
+## Influential values
+
+```{r}
+model.data <- broom::augment(mod.gotPNcare) %>% 
+  mutate(index = 1:n())
+
+model.data %>%
+  ggplot(aes(index, y=.cooksd)) + 
+  geom_linerange(aes(ymin=0, ymax=.cooksd, color=gotPNcare), alpha=0.75) +
+  geom_text(aes(x=index, y=.cooksd, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+model.data %>%
+  ggplot(aes(index, .std.resid)) + 
+  geom_point(aes(color = gotPNcare), alpha = .5) +
+  geom_text(aes(x=index, y=.std.resid, label=index),
+                           data=top_n(model.data, n=3, wt=.cooksd)) +
+  theme_bw()
+
+# Any standardized residuals above 3?
+model.data %>% 
+  filter(abs(.std.resid) > 3)
+
+plot(mod.gotPNcare, which = 5)
+rm(model.data)
+```
 
 
