@@ -6,6 +6,7 @@
 .DS_Store
 Textbook datasets
 Exam
+NSFG data wrangle.Rmd
 *.Rproj
 Project/rsconnect
 
