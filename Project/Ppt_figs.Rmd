@@ -566,6 +566,14 @@ bind_cols(
 
 ```
 
+```{r}
+chisq.test(BIRTH$Wanted, BIRTH$race)
+
+count(BIRTH, race, Wanted) %>% spread(Wanted, n) %>%
+  mutate(`% unwanted` = round(No/(Yes+No), 3)*100)
+```
+
+
 # test
 
 ```{r, results='asis'}

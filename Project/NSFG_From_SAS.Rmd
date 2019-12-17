@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo=F, warning=F, message=F)
+knitr::opts_chunk$set(echo=T, warning=F, message=F)
 library(pander)
 library(scales)
 
@@ -17,11 +17,25 @@ library(MASS)
 library(tidyverse)
 ```
 
-First run the SAS code to produce the `preg.csv` and `resp.csv`
+This is the first of 3 scripts/programs that I ran to create our analysis. This script corresponds the the **flowchart portion of our paper / presentation**. The results & code from the other portions of the analysis can be found in the links below
+
+1. [Data wrangling step](http://rpubs.com/HunterRatliff1/NSFG_Wrangle)
+2. [Exploratory data analysis & descriptive statistics](http://rpubs.com/HunterRatliff1/NSFG_EDA)
+3. [Regression models](http://rpubs.com/HunterRatliff1/NSFG_SomeModels)
+
+# Workflow
+
+My workflow before this point was to download the two source files, **2015_2017_FemRespData.dat** and **2015_2017_FemPregData.dat** from the [NSFG website](ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NSFG). Because these are .dat files (and very large), I exported our potential variables of interest from SAS to two CSV's. These CSV's are essentially the raw data from the NSFG website, maintaining the same varaible names and formats. These CSVs can be downloaded [from GitHub](https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/tree/master/Project/data).
+
+In this file, I take the data from these two CSVs (`preg.csv` and `resp.csv`) and create the datasets used in our analysis. You can [run the code](https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/blob/master/Project/NSFG_From_SAS.Rmd) if you like or just download the datasets it produces from my GitHub. 
 
 ## Simplify the CSVs to variables of interest
 
+Read & handle the female response csv
+
 ```{r resp_csv}
+# If you want to download this data from my GitHub:
+# read_csv("https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/raw/master/Project/data/resp.csv")
 resp <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/resp.csv") %>%
   select(CASEID, EDUCAT, HISPRACE, BMI, PREGNUM, USUALCAR, HIEDUC) %>%
   
@@ -43,8 +57,11 @@ resp <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/resp.csv") %>%
 
 ```
 
+Read & handle the pregnancy csv
 
 ```{r preg_csv}
+# If you want to download this data from my GitHub:
+# read_csv("https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/raw/master/Project/data/preg.csv")
 preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>% 
   select(CASEID, KNEWPREG, BGNPRENA, LBW=LBW1,
          OUTCOME, AGECON, PMARPREG,  POVERTY, GA=WKSGEST, 
@@ -77,7 +94,7 @@ preg <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv") %>%
 
 ## Join data
 
-In the steps leading up to the creation of `data0`
+here's how many observations were present in the steps leading up to the creation of `data0`:
 
 ```{r, echo=T, collapse=T}
 # raw number of rows
@@ -95,7 +112,7 @@ df <- df %>%
 nrow(df)
 ```
 
-
+Now we create data0
 
 ```{r data0}
 data0 <- 
@@ -167,53 +184,22 @@ gg_miss_upset(data0, nsets = n_var_miss(data0))
 
 Make two datasets, `BIRTH` with birth outcomes and `PN` with prenatal care outcomes
 
-```{r}
+```{r, eval=F}
 BIRTH <- data0 %>%
   select(CASEID, LBW, PreMe, 
          GA, BMI, age, income, race, YrEdu, eduCat, Wanted) %>%
-  na.omit()
+  na.omit() # drop rows with any missing values
+nrow(BIRTH)
 
 PN <- data0 %>% 
   select(CASEID, KnowPreg, gotPNcare, LBW, PreMe, 
          GA, BMI, PregNum, age, income, race, YrEdu, eduCat, Wanted) %>%
-  na.omit()
+  na.omit() # drop rows with any missing values
+nrow(PN)
 
+# Write out for use in other scripts
 BIRTH %>% write_rds("data/BIRTH.RDS")
 PN %>% write_rds("data/PN.RDS")
 data0 %>% write_rds("data/data0.RDS")
-
-rm(resp, resp_csv, preg, preg_csv, data0)
 ```
 
-
-
-## Trying from SAS
-
-```{r readSAS}
-preg_csv <- read_csv("~/SASUniversityEdition/myfolders/NSFG/csv/preg.csv")
-
-
-preg_SAS <- haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/pregsimple.sas7bdat", 
-    NULL)
-
-preg_SAS$WANTPART %>% str()
-
-resp_SAS <- haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/respsimple.sas7bdat", 
-    NULL)
-
-haven::read_sas("~/SASUniversityEdition/myfolders/NSFG/SAS_Datasets/pregdata.sas7bdat", 
-    NULL) %>%
-  select(CASEID, PREGORDR, WKSGEST, BIRTHWGT_LB1, KNEWPREG, PRIORSMK,
-         POSTSMKS, NPOSTSMK, BGNPRENA, EVUSEINT, STOPDUSE, WHYSTOPD)
-
-
-# # "CASEID", "PREGORDR", "WKSGEST", "BIRTHWGT_LB1", "KNEWPREG", "PRIORSMK",
-# # "POSTSMKS", "NPOSTSMK", "BGNPRENA", "EVUSEINT", "STOPDUSE", "WHYSTOPD",
-# "TRYSCALE", "WANTSCAL", "OUTCOME", "AGECON", "PMARPREG" ,"RMAROUT6",
-# "LBW1", "WANTRESP", "WANTPART", "NEWWANTR", "POVERTY", "WGT2015_2017",
-# "SECU", "SEST"
-
-
-
-
-```

@@ -67,7 +67,7 @@ read_rds("data/data0.RDS") %>%
   vis_miss()
 
 
-gg_miss_upset(read_rds("data/data0.RDS"), nsets = n_var_miss(read_rds("data/data0.RDS")))
+x <- gg_miss_upset(read_rds("data/data0.RDS"), nsets = n_var_miss(read_rds("data/data0.RDS")))
 ```
 
 

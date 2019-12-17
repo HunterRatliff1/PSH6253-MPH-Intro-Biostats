@@ -4,17 +4,19 @@ author: "Hunter Ratliff"
 date: "11/17/2019"
 always_allow_html: true
 output:
-  word_document: 
-    toc: yes
-  pdf_document:
-    df_print: kable
-    highlight: tango
-    toc: yes
   html_document:
     theme: united
     toc: yes
     toc_float: yes
+  pdf_document:
+    df_print: kable
+    highlight: tango
+    toc: yes
+  word_document: 
+    toc: yes
 ---
+
+Data files to reporoduce this analysis can be found on [my GitHub](https://github.com/HunterRatliff1/PSH6253-MPH-Intro-Biostats/tree/master/Project/data)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=F, warning=F, message=F, collapse = T)
@@ -168,18 +170,23 @@ broom::tidy(mod.LBW) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
   select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
-  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
-  mutate(conf.low   = round(conf.low, 3)) %>%
-  mutate(conf.high  = round(conf.high, 3)) %>%
-  pander()
-#   mutate(
-#     p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-#     ) %>%
-#   knitr::kable(digits=4, escape=F) %>%
-#   kable_styling("striped", full_width = F)
+  # mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  # mutate(conf.low   = round(conf.low, 3)) %>%
+  # mutate(conf.high  = round(conf.high, 3)) %>%
+  # pander()
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
 # # Also can do this --> exp(cbind(OR = coef(mod.LBW), confint(mod.LBW))) %>% round(3)    
 
 ```
+
+```{r}
+glance(mod.LBW) %>% pander()
+```
+
 
 ## OR plot
 
@@ -396,15 +403,20 @@ broom::tidy(mod.PreMe) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
   select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
-  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
-  mutate(conf.low   = round(conf.low, 3)) %>%
-  mutate(conf.high  = round(conf.high, 3)) %>%
-  pander()
-  # mutate(
-  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-  #   ) %>%
-  # knitr::kable(digits=4, escape=F) %>%
-  # kable_styling("striped", full_width = F)
+  # mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  # mutate(conf.low   = round(conf.low, 3)) %>%
+  # mutate(conf.high  = round(conf.high, 3)) %>%
+  # pander()
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+```{r}
+glance(mod.PreMe) %>% pander()
 ```
 
 ## OR plot
@@ -509,15 +521,20 @@ broom::tidy(mod.KnowPreg) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
   select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
-  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
-  mutate(conf.low   = round(conf.low, 3)) %>%
-  mutate(conf.high  = round(conf.high, 3)) %>%
-  pander()
-  # mutate(
-  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-  #   ) %>%
-  # knitr::kable(digits=4, escape=F) %>%
-  # kable_styling("striped", full_width = F)
+  # mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  # mutate(conf.low   = round(conf.low, 3)) %>%
+  # mutate(conf.high  = round(conf.high, 3)) %>%
+  # pander()
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+```{r}
+glance(mod.KnowPreg) %>% pander()
 ```
 
 ## OR plot
@@ -616,15 +633,20 @@ broom::tidy(mod.gotPNcare) %>%
   mutate_if(is.numeric, round, 4) %>%
   filter(term!="(Intercept)") %>%
   select(term, Odds.Ratio, conf.low, conf.high, p.value) %>%
-  mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
-  mutate(conf.low   = round(conf.low, 3)) %>%
-  mutate(conf.high  = round(conf.high, 3)) %>%
-  pander()
-  # mutate(
-  #   p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
-  #   ) %>%
-  # knitr::kable(digits=4, escape=F) %>%
-  # kable_styling("striped", full_width = F)
+  # mutate(Odds.Ratio = round(Odds.Ratio, 3)) %>%
+  # mutate(conf.low   = round(conf.low, 3)) %>%
+  # mutate(conf.high  = round(conf.high, 3)) %>%
+  # pander()
+  mutate(
+    p.value    = cell_spec(p.value, color = ifelse(p.value <0.05, "red", "black"))
+    ) %>%
+  knitr::kable(digits=4, escape=F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+```{r}
+glance(mod.gotPNcare) %>% pander()
 ```
 
 ## OR plot
@@ -690,6 +712,43 @@ model.data %>%
 
 plot(mod.gotPNcare, which = 5)
 rm(model.data)
+```
+
+## Prediction
+
+```{r Prediction_4a}
+### Predictions of propabilities ###
+df <- tidyr::expand(PN, Wanted, KnowPreg) %>%
+  mutate(
+    age = mean(PN$age),
+    # PregNum = mean(PN$PregNum),
+    # income = mean(PN$income),
+    race = as.factor("White"),
+    YrEdu  = mean(PN$YrEdu)
+  ) %>%
+  expand_grid(
+    income=seq(0, 500, by=50)
+  ) %>%
+  expand_grid(
+    PregNum = seq(1, 7, by=2)
+  )
+
+
+df$fit <- predict(object = mod.gotPNcare, newdata = df, type="response", se.fit = T)$fit
+df$ul  <- df$fit + predict(object = mod.gotPNcare, newdata = df, type="response", se.fit = T)$se.fit
+df$ll  <- df$fit - predict(object = mod.gotPNcare, newdata = df, type="response", se.fit = T)$se.fit
+
+df %>% 
+  mutate(PregNum = paste0("Pregnancy #", PregNum)) %>%
+  ggplot(aes(x=income, y=fit, group=interaction(Wanted, KnowPreg))) +
+  geom_ribbon(aes(ymax=ul, ymin=ll), alpha=0.1) +
+  geom_line(aes(color=Wanted, linetype=KnowPreg)) +
+  facet_grid(.~PregNum) +
+  scale_color_colorblind() +
+  theme_bw() +
+  labs(x="Income as % federal poverty line", y="Pr(Receiving Prenatal Care)",
+       title="Predicted Pr(gotPNcare)",
+       subtitle = "Split by pregnancy number")
 ```
 
 
