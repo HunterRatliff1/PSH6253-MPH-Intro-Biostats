@@ -1,7 +1,9 @@
 %let path=/folders/myfolders/NSFG;   * base path macro;
 libname NSFG "&path/SAS_Datasets";   * create library;
 
-/* Remember to run the other scripts to define formats */
+/* Remember to run the two scripts below to define formats first */
+/* 2015_2017_FemPregSetup.sas                                    */ 
+/* 2015_2017_FemRespSetup.sas                                    */
 
 data preg;
   set nsfg.pregdata (keep=
