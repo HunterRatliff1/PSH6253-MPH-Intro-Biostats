@@ -9,6 +9,7 @@ Exam
 NSFG data wrangle.Rmd
 *.Rproj
 Project/rsconnect
+Project/SAS code/csv
 
 # HTML, png, pdf
 *.html
@@ -19,5 +20,8 @@ Project/rsconnect
 *.docx
 *.svg
 *.pptx
+*.dat
+*.sas7bdat
+.sas~
 
 .CensusAPIkey.R
