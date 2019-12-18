@@ -118,29 +118,6 @@ PN %>% select_if(is.factor) %>% select(-eduCat) %>% str()
 ```
 
 
-# Odds ratio based on 2x2 tables
-
-Odds ratio of being LBW, given exposure to unwantedness
-
-```{r OR_example, echo=T, collapse=T}
-tab <- t(table(BIRTH$LBW, BIRTH$Wanted)) 
-tab
-tab %>% mosaic::orrr()  %>% .^-1
-# Odds ratio of being LBW, given exposure to unwantedness
-# Odds LBW in unwanted: 222/1834 = .12105
-# Odds LBW in wanted: 236/2528 = .09335
-(222/1834)/(236/2528) # 1.296638
-glm(LBW ~ Wanted, data=BIRTH, family=binomial) %>% coef() %>% exp()
-# glm(LBW ~ Wanted, data=BIRTH, family=binomial) %>% 
-#   predict(newdata = tibble(PreMe=as.factor("Term")), type="response")
-```
-
-So we see that we should be interpreting the odds ratio of the regression as follows
-
-> the odds of [**second level of outcome variable**], given exposure to [**second level of predictor**]
-
-In this case, the odds ratio shows us the odds of *being __low__ birth weight*, with a reference level of *wanted pregnancy* (i.e. OR of being LBW given unwanted pregnancy)
-
 # Low Birth Weight
 
 First, a refresher on the number of subjects who were low birth weight
@@ -150,7 +127,7 @@ table(BIRTH$LBW) %>%
   pander(caption="Counts of subjects with normal and low birth weights")
 ```
 
-This model predicts being born as **low birth weight** with the formula below
+This model predicts being born as **low birth weight** for their gestational age with the formula below
 
 ```{r}
 mod.LBW <- glm(LBW ~ GA + BMI + age + income + race + YrEdu + Wanted, 
@@ -188,23 +165,21 @@ glance(mod.LBW) %>% pander()
 ```
 
 
-## OR plot
-
-```{r}
+```{r OR_plot1, include=F}
 sjPlot::plot_model(mod.LBW, title = "OR of having LBW child",
                    sort.est=T, show.values = T, value.offset = .4)
 ```
 
 ## Type III Anova
 
-```{r}
+```{r ANOVA_1}
 # type 3 anova
-car::Anova(mod.LBW, type = 3) %>% pander()
+car::Anova(mod.LBW, type = 3)
 ```
 
 ## Hosmer-Lemeshow & more
 
-```{r}
+```{r diagnostics_1}
 # diagnostics
 rms::lrm(mod.LBW[["formula"]], 
          data=BIRTH) %>% 
@@ -223,14 +198,18 @@ ResourceSelection::hoslem.test(
   fitted(mod.LBW))
 ```
 
+**Impression:** Everything looks good here
+
 ## Multicolinearity / VIF
 
 Variance inflation factors should be below 5 or 10
 
-```{r}
+```{r VIF_1}
 car::vif(mod.LBW)
 # cor(model.matrix(mod.LBW)[,-1]) %>% corrplot::corrplot()
 ```
+
+**Impression:** Looks great, all VIFs are well below 5 (none are even above 2.5)
 
 ## Influential values
 
@@ -257,6 +236,8 @@ model.data %>%
   theme_bw()
 ```
 
+A observations have standardized residuals with an absolute value greater than 3, shown in the table below:
+
 ```{r}
 # Any standardized residuals above 3?
 model.data %>% 
@@ -270,6 +251,34 @@ plot(mod.LBW, which = 5)
 rm(model.data)
 ```
 
+## Linearity
+
+Check for a linear relationship between continuous predictors and logit of outcome
+
+```{r linearity_1}
+probabilities <- predict(mod.LBW, type = "response")
+BIRTH %>%
+  select(-CASEID) %>%
+  dplyr::select_if(is.numeric)  %>%
+  mutate(index = 1:n()) %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit, -index) %>%
+  filter(index!=3713) %>% # remove one datapoint 
+
+  ggplot(aes(logit, predictor.value))+
+  geom_jitter(size = 0.5, alpha = 0.25) +
+  geom_smooth(method = "glm", color="green") + 
+  geom_smooth(method = "loess", color="red") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y") +
+  labs(
+    x = "Logit of predicted values",
+    caption="Green line: generalised linear smooth\nRed line: Loess local smooth")
+```
+
+**Impression:** `GA` shows a very pretty linear relationship, but all the other relationships don't really look linear at all. This is certainly a problem for this regression, but is less of an issue for the other models.
+
+_Note: one observation has been removed, with a gestational age of 44 weeks_
 
 
 ## Prediction
@@ -306,6 +315,8 @@ df %>% ggplot(aes(x=income, y=fit, group=race)) +
        subtitle = "Split by Wantedness (Yes/No)")
 ```
 
+This prediction assumes Wanted=="Yes
+
 ```{r prediction1b}
 ### Predictions of propabilities ###
 df <- tidyr::expand(BIRTH, race) %>%
@@ -338,17 +349,34 @@ df %>% ggplot(aes(x=GA, y=fit, group=race)) +
 
 ## Cross-Validation
 
+> Ignore this section for grading purposes
+
 Confusion matrix using test & training data
 
 ```{r}
+# Make two datasets
 train <- BIRTH %>% group_by(LBW) %>% sample_frac(.8, replace=T)
 test <- anti_join(BIRTH, train)
-# BIRTH %>% group_by(LBW) %>% sample_n(.8*nrow(BIRTH), replace=T) # gives equal numbers
 
-
+# Make model
 mod <- glm(mod.LBW[["formula"]], data=train, family=binomial(link = "logit"))
 predicted <- predict(mod, test, type="response")
+```
 
+First, create a training model using 4/5ths of the original dataset. Below are the odds ratios of the original and training model
+
+```{r}
+tibble(
+  coefficient = names(coef(mod)),
+  `Original OR` = exp(coef(mod.LBW)),
+  `Training OR` = exp(coef(mod))
+) %>%
+  mutate_if(is.numeric, function(x) round(x, 2))
+```
+
+Next find the misclassifiaction error rate and plot the ROC curve
+
+```{r}
 library(InformationValue)
 # find optimal cutoff
 cutoff <- optimalCutoff(ifelse(test$LBW=="Low", 1, 0), predicted)
@@ -360,9 +388,12 @@ misClassError(ifelse(test$LBW=="Low", 1, 0), predicted,
 # plot ROC
 plotROC(ifelse(test$LBW=="Low", 1, 0), predicted)
 
-Concordance(ifelse(test$LBW=="Low", 1, 0), predicted)
+# Concordance(ifelse(test$LBW=="Low", 1, 0), predicted)
+```
 
+Finally, the confusion matrix using test & training data
 
+```{r}
 # Confusion matrix
 caret::confusionMatrix(positive="Low",
   as.factor(ifelse(predicted>cutoff, "Low", "Normal")),
@@ -419,23 +450,21 @@ broom::tidy(mod.PreMe) %>%
 glance(mod.PreMe) %>% pander()
 ```
 
-## OR plot
-
-```{r}
+```{r OR_plot2, include=F}
 sjPlot::plot_model(mod.PreMe, title = "OR of having birth prematurely",
                    sort.est=T, show.values = T, value.offset = .4)
 ```
 
 ## Type III Anova
 
-```{r}
+```{r ANOVA_2}
 # type 3 anova
-car::Anova(mod.PreMe, type = 3) %>% pander()
+car::Anova(mod.PreMe, type = 3)
 ```
 
 ## Hosmer-Lemeshow & more
 
-```{r}
+```{r diagnostics_2}
 # diagnostics
 rms::lrm(mod.PreMe[["formula"]], 
          data=BIRTH) %>% 
@@ -447,13 +476,17 @@ ResourceSelection::hoslem.test(
   fitted(mod.PreMe))
 ```
 
+**Impression:** Everything looks good here
+
 ## Multicolinearity / VIF
 
 Variance inflation factors should be below 5 or 10
 
-```{r}
+```{r VIF_2}
 car::vif(mod.PreMe)
 ```
+
+**Impression:** Looks great, all VIFs are well below 5 (none are even above 2.5)
 
 ## Influential values
 
@@ -475,14 +508,37 @@ model.data %>%
                            data=top_n(model.data, n=3, wt=.cooksd)) +
   theme_bw()
 
-# Any standardized residuals above 3?
-model.data %>% 
-  filter(abs(.std.resid) > 3)
-
 plot(mod.PreMe, which = 5)
 rm(model.data)
 ```
 
+
+## Linearity
+
+Check for a linear relationship between continuous predictors and logit of outcome
+
+```{r linearity_2}
+probabilities <- predict(mod.PreMe, type = "response")
+BIRTH %>%
+  select(-CASEID, -GA) %>%
+  dplyr::select_if(is.numeric)  %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit) %>%
+  
+  ggplot(aes(logit, predictor.value))+
+  geom_jitter(size = 0.5, alpha = 0.25) +
+  geom_smooth(method = "glm", color="green") + 
+  geom_smooth(method = "loess", color="red") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y") +
+  labs(
+    x = "Logit of predicted values",
+    caption="Green line: generalised linear smooth\nRed line: Loess local smooth")
+```
+
+**Impression:** Well this looks better than the first regression. 
+
+`Income` looks curvilinear, perhaps because the artificial grouping around 500% of the FPL and some effects for those in deep poverty (i.e. below 100%). `BMI` and `age` also have some problems at higher logit predicted values. Somewhat surprisingly, `YrEdu` doesn't look bad at all, and this is the only variable I'd really consider making categorical. 
 
 ## Prediction
 
@@ -569,9 +625,7 @@ broom::tidy(mod.KnowPreg) %>%
 glance(mod.KnowPreg) %>% pander()
 ```
 
-## OR plot
-
-```{r}
+```{r OR_plot3, include=F}
 sjPlot::plot_model(mod.KnowPreg, title = "OR of knowing pregnancy by 6 wk",
                    sort.est=T, show.values = T, value.offset = .4)
 ```
@@ -579,14 +633,14 @@ sjPlot::plot_model(mod.KnowPreg, title = "OR of knowing pregnancy by 6 wk",
 
 ## Type III Anova
 
-```{r}
+```{r ANOVA_3}
 # type 3 anova
-car::Anova(mod.KnowPreg, type = 3) %>% pander()
+car::Anova(mod.KnowPreg, type = 3)
 ```
 
 ## Hosmer-Lemeshow & more
 
-```{r}
+```{r diagnostics_3}
 # diagnostics
 rms::lrm(mod.KnowPreg[["formula"]], 
          data=PN) %>% 
@@ -598,13 +652,17 @@ ResourceSelection::hoslem.test(
   fitted(mod.KnowPreg))
 ```
 
+**Impression:** Everything looks good here
+
 ## Multicolinearity / VIF
 
 Variance inflation factors should be below 5 or 10
 
-```{r}
+```{r VIF_3}
 car::vif(mod.KnowPreg)
 ```
+
+**Impression:** Looks great, all VIFs are well below 5 (none are even above 2.5)
 
 ## Influential values
 
@@ -626,17 +684,38 @@ model.data %>%
                            data=top_n(model.data, n=3, wt=.cooksd)) +
   theme_bw()
 
-# Any standardized residuals above 3?
-model.data %>% 
-  filter(abs(.std.resid) > 3)
-
 plot(mod.KnowPreg, which = 5)
 rm(model.data)
 ```
 
+## Linearity
+
+Check for a linear relationship between continuous predictors and logit of outcome
+
+```{r linearity_3}
+probabilities <- predict(mod.KnowPreg, type = "response")
+PN %>%
+  select(-CASEID, -GA) %>%
+  dplyr::select_if(is.numeric)  %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit) %>%
+  
+  ggplot(aes(logit, predictor.value))+
+  geom_jitter(size = 0.5, alpha = 0.25) +
+  geom_smooth(method = "glm", color="green") + 
+  geom_smooth(method = "loess", color="red") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y") +
+  labs(
+    x = "Logit of predicted values",
+    caption="Green line: generalised linear smooth\nRed line: Loess local smooth")
+```
+
+**Impression:** Unlike the last two regressions, `age` and `BMI` look pretty linear. Again `income` appears to deviate from linearity once it's below 100% of the FPL, and it looks like there might be a difference in `YrEdu` for those with less than a high school education (YrEdu < 12) and everyone else. Finally, `PregNum` looks to be linear despite the few outliers (who were having their 10th or greater pregnancy).
+
 ## Prediction
 
-```{r Prediction_4a}
+```{r Prediction_3a}
 ### Predictions of propabilities ###
 df <- tidyr::expand(PN, Wanted, race) %>%
   mutate(
@@ -712,9 +791,8 @@ broom::tidy(mod.gotPNcare) %>%
 glance(mod.gotPNcare) %>% pander()
 ```
 
-## OR plot
 
-```{r}
+```{r OR_plot4, include=F}
 sjPlot::plot_model(mod.gotPNcare, title = "OR of getting prenatal care",
                    sort.est=T, show.values = T, value.offset = .4)
 ```
@@ -722,14 +800,14 @@ sjPlot::plot_model(mod.gotPNcare, title = "OR of getting prenatal care",
 
 ## Type III Anova
 
-```{r}
+```{r ANOVA_4}
 # type 3 anova
-car::Anova(mod.gotPNcare, type = 3) %>% pander()
+car::Anova(mod.gotPNcare, type = 3)
 ```
 
 ## Hosmer-Lemeshow & more
 
-```{r}
+```{r diagnostics_4}
 # diagnostics
 rms::lrm(mod.gotPNcare[["formula"]], 
          data=PN) %>% 
@@ -741,13 +819,17 @@ ResourceSelection::hoslem.test(
   fitted(mod.gotPNcare))
 ```
 
+**Impression:** Everything looks good here
+
 ## Multicolinearity / VIF
 
 Variance inflation factors should be below 5 or 10
 
-```{r}
+```{r VIF_4}
 car::vif(mod.gotPNcare)
 ```
+
+**Impression:** Looks great, all VIFs are well below 5 (none are even above 2.5)
 
 ## Influential values
 
@@ -769,13 +851,41 @@ model.data %>%
                            data=top_n(model.data, n=3, wt=.cooksd)) +
   theme_bw()
 
-# Any standardized residuals above 3?
-model.data %>% 
-  filter(abs(.std.resid) > 3)
-
 plot(mod.gotPNcare, which = 5)
 rm(model.data)
 ```
+
+
+## Linearity
+
+Check for a linear relationship between continuous predictors and logit of outcome
+
+```{r linearity_4}
+probabilities <- predict(mod.gotPNcare, type = "response")
+PN %>%
+  select(-CASEID, -GA) %>%
+  dplyr::select_if(is.numeric)  %>%
+  mutate(index = 1:n()) %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  mutate(KnowPreg = PN$KnowPreg) %>%
+  gather(key = "predictors", value = "predictor.value", -logit, -index, -KnowPreg) %>%
+  filter(index!=404) %>%
+  filter(index!=402) %>% # remove two pregnancies
+  
+  ggplot(aes(logit, predictor.value))+
+  geom_jitter(size = 0.5, alpha = 0.25, aes(color=KnowPreg)) +
+  geom_smooth(method = "glm", color="green", aes(group=KnowPreg)) + 
+  geom_smooth(method = "loess", color="red") + 
+  theme_bw() + theme(legend.position="bottom") +
+  facet_wrap(~predictors, scales = "free_y") +
+  labs(
+    x = "Logit of predicted values",
+    caption="Green line: generalised linear smooth\nRed line: Loess local smooth")
+```
+
+**Impression:** Because the x-axis is a function of the predicted values and we included `KnowPreg` in our regression (with a massive effect size), these plots spread into two distict groups based on this predictor. The overall loess line (red) clearly doesn't demonstrate a linear relationship, but within each group it looks like there's better linearity. At this point I'm not sure what my impression should be, so I'll just leave it there and let you tell me the answer. Is this too problematic to accept regression 4 as valid? 
+
+_Note: Two pregnancies (with pregnum=14) were removed_
 
 ## Prediction
 
@@ -815,3 +925,32 @@ df %>%
 ```
 
 
+# A bit on linearity
+
+I've read mixed information on what is important for the assumption of linearity, and in the plots above I've look at linear relationships between predictors and the _logit of the predicted outcome_. After the presentation in class (and more reading) I'm adding this section looking at the linear relationships between the predictors and their _pearson residuals_ using the `car` package.
+
+From what I'm able to gather from [reading up on the issue](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4885900/), the _pearson residuals_ vs _predictor_ line should be straight and have a slope of zero. Additionally, the `car::residualPlots()` function provides a lack of fit test for each variables' relationship with the residuals.
+
+## Low birth weight
+
+```{r resLinearity_1, fig.height = 7}
+car::residualPlots(mod.LBW)
+```
+
+## Premature birth
+
+```{r resLinearity_2, fig.height = 7}
+car::residualPlots(mod.PreMe)
+```
+
+## Knew pregnant
+
+```{r resLinearity_3, fig.height = 7}
+car::residualPlots(mod.KnowPreg)
+```
+
+## Got prenatal care
+
+```{r resLinearity_4, fig.height = 7}
+car::residualPlots(mod.gotPNcare)
+```
