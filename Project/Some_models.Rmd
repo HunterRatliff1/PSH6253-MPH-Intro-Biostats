@@ -276,7 +276,7 @@ rm(model.data)
 
 Using adjusted rates (assuming other variables are at their means)
 
-```{r prediction1}
+```{r prediction1a}
 ### Predictions of propabilities ###
 df <- tidyr::expand(BIRTH, Wanted, race) %>%
   mutate(
@@ -306,7 +306,7 @@ df %>% ggplot(aes(x=income, y=fit, group=race)) +
        subtitle = "Split by Wantedness (Yes/No)")
 ```
 
-```{r prediction2}
+```{r prediction1b}
 ### Predictions of propabilities ###
 df <- tidyr::expand(BIRTH, race) %>%
   mutate(
@@ -484,7 +484,39 @@ rm(model.data)
 ```
 
 
+## Prediction
 
+Using adjusted rates (assuming other variables are at their means)
+
+```{r predict2a}
+### Predictions of propabilities ###
+df <- tidyr::expand(BIRTH, Wanted, race) %>%
+  mutate(
+    GA = mean(BIRTH$GA),
+    BMI = mean(BIRTH$BMI),
+    age = mean(BIRTH$age),
+    # income = mean(BIRTH$income),
+    YrEdu  = mean(BIRTH$YrEdu)
+  ) %>%
+  expand_grid(
+    income=seq(0, 500, by=50)
+  ) 
+
+# predict(object = mod.LBW, newdata = df, type="response", se.fit = T)
+df$fit <- predict(object = mod.PreMe, newdata = df, type="response", se.fit = T)$fit
+df$ul  <- df$fit + predict(object = mod.PreMe, newdata = df, type="response", se.fit = T)$se.fit
+df$ll  <- df$fit - predict(object = mod.PreMe, newdata = df, type="response", se.fit = T)$se.fit
+
+df %>% ggplot(aes(x=income, y=fit, group=race)) +
+  geom_ribbon(aes(ymax=ul, ymin=ll), alpha=0.1) +
+  geom_line(aes(color=race)) +
+  facet_grid(.~Wanted) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw() +
+  labs(x="Income as % federal poverty line", y="Pr(Preterm Birth)",
+       title="Predicted Pr(PTB), by income & race",
+       subtitle = "Split by Wantedness (Yes/No)")
+```
 
 
 
@@ -602,7 +634,38 @@ plot(mod.KnowPreg, which = 5)
 rm(model.data)
 ```
 
+## Prediction
 
+```{r Prediction_4a}
+### Predictions of propabilities ###
+df <- tidyr::expand(PN, Wanted, race) %>%
+  mutate(
+    PregNum = mean(PN$PregNum),
+    age = mean(PN$age),
+    # income = mean(PN$income),
+    # race = as.factor("White"),
+    YrEdu  = mean(PN$YrEdu)
+  ) %>%
+  expand_grid(
+    income=seq(0, 500, by=50)
+  ) 
+
+
+df$fit <- predict(object = mod.KnowPreg, newdata = df, type="response", se.fit = T)$fit
+df$ul  <- df$fit + predict(object = mod.KnowPreg, newdata = df, type="response", se.fit = T)$se.fit
+df$ll  <- df$fit - predict(object = mod.KnowPreg, newdata = df, type="response", se.fit = T)$se.fit
+
+df %>% 
+  ggplot(aes(x=income, y=fit, group=Wanted)) +
+  geom_ribbon(aes(ymax=ul, ymin=ll), alpha=0.1) +
+  geom_line(aes(color=Wanted, linetype=Wanted)) +
+  facet_grid(.~race) +
+  scale_color_colorblind() +
+  theme_bw() +
+  labs(x="Income as % federal poverty line", y="Pr(Knew Pregnant)",
+       title="Predicted Pr(KnowPreg)",
+       subtitle = "Split by race")
+```
 
 
 
